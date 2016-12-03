@@ -108,7 +108,6 @@ namespace guiWopencv {
 		
 		void InitializeComponent(void)
 		{
-			//create gui components
 			this->button1 = (gcnew System::Windows::Forms::Button());
 			this->textBox1 = (gcnew System::Windows::Forms::TextBox());
 			this->label2 = (gcnew System::Windows::Forms::Label());
@@ -122,7 +121,6 @@ namespace guiWopencv {
 			this->label5 = (gcnew System::Windows::Forms::Label());
 			this->backgroundWorker1 = (gcnew System::ComponentModel::BackgroundWorker());
 			this->SuspendLayout();
-			//initialize gui componets and set properties
 			// 
 			// button1
 			// 
@@ -154,7 +152,7 @@ namespace guiWopencv {
 			// label3
 			// 
 			this->label3->AutoSize = true;
-			this->label3->Location = System::Drawing::Point(26, 62);
+			this->label3->Location = System::Drawing::Point(12, 138);
 			this->label3->Name = L"label3";
 			this->label3->Size = System::Drawing::Size(54, 13);
 			this->label3->TabIndex = 4;
@@ -172,7 +170,7 @@ namespace guiWopencv {
 			// 
 			// button3
 			// 
-			this->button3->Location = System::Drawing::Point(189, 125);
+			this->button3->Location = System::Drawing::Point(189, 110);
 			this->button3->Name = L"button3";
 			this->button3->Size = System::Drawing::Size(61, 23);
 			this->button3->TabIndex = 6;
@@ -236,7 +234,6 @@ namespace guiWopencv {
 			// 
 			// MyForm
 			// 
-			//form options
 			this->AutoScaleDimensions = System::Drawing::SizeF(6, 13);
 			this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::Font;
 			this->ClientSize = System::Drawing::Size(384, 160);
@@ -333,76 +330,88 @@ namespace guiWopencv {
 		if(connection_established==false){
 			//convert the taken ip from system string to std string
 			ip_address = msclr::interop::marshal_as<std::string>(ip_address2);
-
-			//create ssh session for gamepad
-			my_ssh_session = create_ssh_connection(ip_address);
-			//create ssh session for sonar read
-			sonar_ssh_session = create_ssh_connection(ip_address);
-			//convert ip from xxx.xxx.xxx.xxx to http://xxx.xxx.xxx.xxx:8081
-			ip_address.insert(0, httpadder);
-			ip_address.insert(ip_address.size(), streamport);
-
-			ip_address_stream = ip_address;
-			//print the gotten IP to the label3
-			label3->Text = ip_address2;
-			//convert std string to system string
-			ip_address2 = msclr::interop::marshal_as<String ^>(ip_address_stream);
-			//check if connection is established
-			if (my_ssh_session == 0) {	//connection is NOT established
-				if (main_debug == true) {
-					printf("Cannot connect to server\n");
-				}
+			//check if the given IP is actualy IP 
+			if (check_input(ip_address) == false) {
+				label3->Text = "This is not a valid IP ->" +ip_address2;
+				label3->ForeColor = System::Drawing::Color::Red;
 			}
 			else {
-				connection_established = true;
-				if (main_debug == true) {
-					printf("Connection established\n");
-				}
-				//check second session for errors
-				if (sonar_ssh_session != 0) {
+				//create ssh session for gamepad
+				my_ssh_session = create_ssh_connection(ip_address);
+				//create ssh session for sonar read
+				sonar_ssh_session = create_ssh_connection(ip_address);
+				//convert ip from xxx.xxx.xxx.xxx to http://xxx.xxx.xxx.xxx:8081
+				ip_address.insert(0, httpadder);
+				ip_address.insert(ip_address.size(), streamport);
+
+				ip_address_stream = ip_address;
+				
+				//convert std string to system string
+				ip_address2 = msclr::interop::marshal_as<String ^>(ip_address_stream);
+				//check if connection is established
+				if (my_ssh_session == 0) {	//connection is NOT established
 					if (main_debug == true) {
-						printf("Second Connection established\n");
+						printf("Cannot connect to server\n");
 					}
 				}
-				//update gui
-				label4->Text = "Connected!";
-				label4->ForeColor = System::Drawing::Color::Green;
-				//start backgroundWorker1 for sonar read
-				backgroundWorker1->RunWorkerAsync();
-				//create a passer object for padthread
-				GamepadRead^ passer = gcnew GamepadRead;
-				//fill the passer with necessary data 
-				passer->pub_ssh_session = my_ssh_session;
-				passer->ip_address_stream = ip_address2;
-				//pass sessions to public variables
-				sonar_pub_ssh_session = sonar_ssh_session;
-				pub_ssh_session = my_ssh_session;
-				
-				//check type of input
-				if (DX_enable==false) {	//Xinput selected
-					//create a padthread with passer's data calling XinputRead function
-					padthread = gcnew System::Threading::Thread(gcnew System::Threading::ThreadStart(passer, &GamepadRead::XinputRead));
-					//set flags
-					xinputhread_started = true;
-					running_xinput = true;
-					running_Dxinput = false;
+				else {
+					connection_established = true;
+					if (main_debug == true) {
+						printf("Connection established\n");
+					}
+					//check second session for errors
+					if (sonar_ssh_session != 0) {
+						if (main_debug == true) {
+							printf("Second Connection established\n");
+						}
+					}
+					//print the gotten IP to the label3				
+					label3->Text = ip_address2;
+					label3->ForeColor = System::Drawing::Color::Green;
+
+					//update gui
+					label4->Text = "Connected!";
+					label4->ForeColor = System::Drawing::Color::Green;
+					//start backgroundWorker1 for sonar read
+					backgroundWorker1->RunWorkerAsync();
+					//create a passer object for padthread
+					GamepadRead^ passer = gcnew GamepadRead;
+					//fill the passer with necessary data 
+					passer->pub_ssh_session = my_ssh_session;
+					passer->ip_address_stream = ip_address2;
+					//pass sessions to public variables
+					sonar_pub_ssh_session = sonar_ssh_session;
+					pub_ssh_session = my_ssh_session;
+
+					//check type of input
+					if (DX_enable == false) {	//Xinput selected
+						//create a padthread with passer's data calling XinputRead function
+						padthread = gcnew System::Threading::Thread(gcnew System::Threading::ThreadStart(passer, &GamepadRead::XinputRead));
+						//set flags
+						xinputhread_started = true;
+						running_xinput = true;
+						running_Dxinput = false;
+					}
+					else {//DirectInput selected
+						//create a padthread with passer's data calling DxinputRead function
+						padthread = gcnew System::Threading::Thread(gcnew System::Threading::ThreadStart(passer, &GamepadRead::DxinputRead));
+						//set flags
+						dxthread_started = true;
+						running_xinput = false;
+						running_Dxinput = true;
+					}
+					//start padthread
+					padthread->Start();
 				}
-				else {//DirectInput selected
-					//create a padthread with passer's data calling DxinputRead function
-					padthread = gcnew System::Threading::Thread(gcnew System::Threading::ThreadStart(passer, &GamepadRead::DxinputRead));
-					//set flags
-					dxthread_started = true; 
-					running_xinput = false;
-					running_Dxinput = true;
-				}
-				//start padthread
-				padthread->Start();
 			}
 		}
 		else {
 			if (main_debug == true) {
 				printf("Connection already established!\n");
 			}
+			//print the gotten IP to the label3				
+			label3->Text = ip_address2;
+			label3->ForeColor = System::Drawing::Color::Red;
 		}
 		
 }
