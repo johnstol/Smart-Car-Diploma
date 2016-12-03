@@ -126,3 +126,40 @@ int shell_session(ssh_session session, std::string my_command, bool sonar_read) 
 	}
 }
 
+bool check_input(std::string given_ip) {
+	std::string delimeter = ".";
+	std::string *token = new std::string[4];
+	size_t pos = 0;
+	int counter = 0, sub_ip;
+	bool isvalidnumber = true, isvalid=true;
+	
+	while (pos=given_ip.find(delimeter) != std::string::npos) {
+		token[counter] = given_ip.substr(0, given_ip.find(delimeter)); //pass substrings to token, the correct IP will fill token[0],token[1],token[2],token[3]
+		given_ip.erase(0, given_ip.find(delimeter) + 1);	//+1 because we want to delete and the delimeter
+		counter++;
+	}
+
+
+	if (counter == 3) {
+		token[3] = given_ip;
+		for (counter = 0; counter < 4; counter++) {
+			sub_ip = atoi(token[counter].c_str());		//convert every substring (token) to int
+			if (sub_ip < 0 || sub_ip>255) {
+				isvalidnumber = false;
+				break;
+			}
+		}
+		
+	}
+	else {
+		isvalid=false;	//that means counter != 3
+	}
+
+	if (isvalid == true && isvalidnumber == true) {	//if counter=3 -> (3 dots) and all substrings are 0-255 then the IP is correct
+		return true;
+	}
+	else {
+		return false;
+	}
+
+}
