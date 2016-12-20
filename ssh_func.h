@@ -2,8 +2,8 @@
 #include "libssh\libssh.h"
 #include <stdio.h>
 #include <string>
-bool ssh_debug = true;//comment for no debug execution
-//bool ssh_debug=false; //comment for normal execution
+//bool ssh_debug = true;//comment for no debug execution
+bool ssh_debug=false; //comment for normal execution
 //create ssh session
 ssh_session create_ssh_connection(std::string ip_address) {
 	ssh_session my_ssh_session;
@@ -17,7 +17,7 @@ ssh_session create_ssh_connection(std::string ip_address) {
 	//ip option
 	ssh_options_set(my_ssh_session, SSH_OPTIONS_HOST, ip_address.c_str());
 	//username option
-	ssh_options_set(my_ssh_session, SSH_OPTIONS_USER, "john");
+	ssh_options_set(my_ssh_session, SSH_OPTIONS_USER, "pi");
 	//quantity of messages that are printed option
 	ssh_options_set(my_ssh_session, SSH_OPTIONS_LOG_VERBOSITY, &verbosity);
 
@@ -34,7 +34,7 @@ ssh_session create_ssh_connection(std::string ip_address) {
 	}
 	else {
 		// Authenticate ourselves
-		password = "mariamatz";
+		password = "raspberry";
 		//send password 
 		rc = ssh_userauth_password(my_ssh_session, NULL, password);
 		//check if authentication is successfull

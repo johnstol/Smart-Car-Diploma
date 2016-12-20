@@ -12,10 +12,10 @@ int sonaread(ssh_session ssh_session) {
 	std::string mycommand;
 	int sonar;
 
-	bool sonr_debug = true;//comment for no debug execution
-	//bool sonr_debug = false;//comment for normal execution
+	//bool sonr_debug = true;//comment for no debug execution
+	bool sonr_debug = false;//comment for normal execution
 
-	mycommand = "cat /home/johnny/sonar.txt";	//read sonar
+	mycommand = "cat /home/onram/sonar.txt";	//read sonar
 	sonar = shell_session(ssh_session, mycommand,true);
 	if(sonr_debug == true) {
 		printf("Sonar from thread: %d\n", sonar);
