@@ -3,12 +3,14 @@ import time
 import thread
 import threading
 
+
 #open serial
-ser = serial.Serial('/dev/ttyACM0', 9600)
+ser = serial.Serial('/dev/ttyACM0', 19200)
 #open files
 sf=open("/home/onram/sonar.txt","w");	#sf ---> sonar file
 cf=open("/home/onram/camera.txt","r+"); #cf ---> camera file
 mf=open("/home/onram/movement.txt","r+"); #mf ---> movement file
+
 
 #define read_sonar function
 
@@ -29,7 +31,8 @@ def read_sonar():
 		sf.seek(0)
 		sf.write(sonar)
 		sf.truncate()
-		time.sleep(0.01)
+		time.sleep(0.02)
+		
 
 #create thread
 sonarthread= mythread(1, "Sonar_thread")
@@ -38,23 +41,31 @@ sonarthread= mythread(1, "Sonar_thread")
 sonarthread.start()
 
 while 1:
-	print "reading files"
 	cf.seek(0)
 	camera= cf.readline()
 	cam_com= camera.split()
-	mf.seek(0)
-	move=mf.readline()
-	mov_com=move.split()
-	if cam_com[0] != "0":
+	if not cam_com:
+		cf.seek(0)
+		cf.write("0")
+	elif cam_com[0] != "0":
 		ser.write(cam_com[0])
 		cf.seek(0)
 		cf.write("0")
 		cf.truncate()
-	if mov_com[0] != "0":
+		
+		
+	mf.seek(0)
+	move=mf.readline()
+	mov_com=move.split()
+	if not mov_com:
+		mf.seek(0)
+		mf.write("0")
+	elif mov_com[0] != "0":
 		ser.write(mov_com[0])
 		mf.seek(0)
 		mf.write("0")
 		mf.truncate()
+
 	time.sleep(0.01)
 
 
