@@ -1,16 +1,37 @@
 #include <Servo.h>
 #include <NewPing.h>
 
-#define TRIGGER_PIN  10  // Arduino pin tied to trigger pin on the ultrasonic sensor.
-#define ECHO_PIN     9  // Arduino pin tied to echo pin on the ultrasonic sensor.
-#define MAX_DISTANCE 200 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
+#define TRIGGER_PIN_FR  12  // Arduino pin tied to trigger pin on the ultrasonic sensor at frond right side of the car.
+#define ECHO_PIN_FR     A0  // Arduino pin tied to echo pin on the ultrasonic sensor at frond right side of the car.
 
-//Blue and White Front Car Lights
-#define Bluelight_pin 12
-#define light_pin 11
+#define TRIGGER_PIN_FL  11  // Arduino pin tied to trigger pin on the ultrasonic sensor at frond left side of the car.
+#define ECHO_PIN_FL     A1  // Arduino pin tied to echo pin on the ultrasonic sensor at frond left side of the car.
+
+#define TRIGGER_PIN_BR  10  // Arduino pin tied to trigger pin on the ultrasonic sensor at back right side of the car.
+#define ECHO_PIN_BR     A2  // Arduino pin tied to echo pin on the ultrasonic sensor at back right side of the car.
+
+#define TRIGGER_PIN_BL  9  // Arduino pin tied to trigger pin on the ultrasonic sensor at back left side of the car.
+#define ECHO_PIN_BL     A3  // Arduino pin tied to echo pin on the ultrasonic sensor at back left side of the car.
+
+#define TRIGGER_PIN_CM  8  // Arduino pin tied to trigger pin on the ultrasonic sensor mounted on camera.
+#define ECHO_PIN_CM     A4  // Arduino pin tied to echo pin on the ultrasonic sensor mounted on camera.
+
+
+#define wheel A5
+
+
+#define MAX_DISTANCE 400 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
+
+
+//wheel value
+int wheel_val=0;
 
 // NewPing setup of pins and maximum distance.
-NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE); 
+NewPing sonarFR(TRIGGER_PIN_FR, ECHO_PIN_FR, MAX_DISTANCE); 
+NewPing sonarFL(TRIGGER_PIN_FL, ECHO_PIN_FL, MAX_DISTANCE); 
+NewPing sonarBR(TRIGGER_PIN_BR, ECHO_PIN_BR, MAX_DISTANCE); 
+NewPing sonarBL(TRIGGER_PIN_BL, ECHO_PIN_BL, MAX_DISTANCE); 
+NewPing sonarCM(TRIGGER_PIN_CM, ECHO_PIN_CM, MAX_DISTANCE); 
 	
 //serial input for new orders
 int serial_input=0;		
@@ -23,12 +44,12 @@ Servo servo1;
 Servo servo2;
 
 // Motor 1	car movement
-int mo1f = 7;
-int mo1b = 8;
+int mo1f = 2;
+int mo1b = 3;
 
 //Motor 2	Steering wheel
-int mo2f = 3;
-int mo2b = 4;
+int mo2f = 4;
+int mo2b = 7;
 
 int servo1_pin = 5;			//servo1 tied to pin 5
 int servo2_pin = 6;			//servo2 tied to pin 6
@@ -38,8 +59,6 @@ int angle2=90;
 //Timer
 int start = millis();
 int myend=0;
-
-int sonar_value = 0;
 
 //define communication codes
 int
@@ -56,14 +75,21 @@ cr=576,
 cl=570;
 
 
+//Sonar time varaiables
+unsigned int timeSonFR,timeSonFL,timeSonBR,timeSonBL,timeSonCM; 
 
-
-
+//Sonar distance varaiables
+int DistSonFR = 0,
+    DistSonFL = 0,
+    DistSonBR = 0,
+    DistSonBL = 0,
+    DistSonCM = 0;
 
 void setup() {
 
 //Initializing Values
-	
+
+  
   servo1.attach(servo1_pin);
   servo1.write(90);
   
@@ -75,11 +101,6 @@ void setup() {
 
   pinMode(mo2f,OUTPUT);
   pinMode(mo2b,OUTPUT);
-  
-  pinMode(Bluelight_pin,OUTPUT);
-  pinMode(light_pin,OUTPUT);	
-  digitalWrite(light_pin, LOW);
-  digitalWrite(Bluelight_pin, LOW);
 
   Serial.begin(19200);  
   
@@ -130,7 +151,7 @@ void loop(){
 		
 		//Move Forward (mf) if there are no obstacles
 		if(serial_input==mf){		//mf
-			if(sonar_value>45){		//if distance is bigger than 45cm its ok move
+			if(DistSonFR>45 && DistSonFL>45){		//if distance is bigger than 45cm its ok move
 				digitalWrite(mo1f, HIGH);
 				digitalWrite(mo1b, LOW);
 			}
@@ -143,8 +164,14 @@ void loop(){
 		
 		//Move Backward (mb)
 		else if(serial_input==mb){	//mb
-			digitalWrite(mo1f, LOW);
-			digitalWrite(mo1b, HIGH);
+      if(DistSonBR>45 && DistSonBL>45){    //if distance is bigger than 45cm its ok move
+  			digitalWrite(mo1f, LOW);
+  			digitalWrite(mo1b, HIGH);
+      }
+      else{          //else stop
+        digitalWrite(mo1f, LOW);
+        digitalWrite(mo1b, LOW);  
+      }
 		}		//mb
 		
 		//Steer Left (ml)
@@ -175,17 +202,47 @@ void loop(){
 	
 	}
 	myend = millis();
-	if(myend-start>=500){
+	if(myend-start>=1000){
 		
 		// Send ping, get ping time in microseconds (uS).
-		unsigned int uS = sonar.ping(); 
-		Serial.print("-");
+		//unsigned int uS = sonar.ping(); 
+    timeSonFR = sonarFR.ping();
+    timeSonFL = sonarFL.ping();
+    timeSonBR = sonarBR.ping();
+    timeSonBL = sonarBL.ping();
+    timeSonCM = sonarCM.ping();
+		
 		
 		// Convert ping time to distance in cm and print result (0 = outside set distance range)
-		sonar_value = (uS / US_ROUNDTRIP_CM);
-		Serial.print(uS / US_ROUNDTRIP_CM);
-		Serial.println("-");
-		
+		DistSonFR = (timeSonFR / US_ROUNDTRIP_CM);
+    DistSonFL = (timeSonFL / US_ROUNDTRIP_CM);
+    DistSonBR = (timeSonBR / US_ROUNDTRIP_CM);
+    DistSonBL = (timeSonBL / US_ROUNDTRIP_CM);
+    DistSonCM = (timeSonCM / US_ROUNDTRIP_CM);
+
+		Serial.print(DistSonFR);
+    Serial.print("-");
+		Serial.print(DistSonFL);
+    Serial.print("-");
+		Serial.print(DistSonBR);
+    Serial.print("-");
+		Serial.print(DistSonBL);
+    Serial.print("-");
+		Serial.print(DistSonCM);
+    Serial.println("-");
+
+    wheel_val = analogRead(wheel);
+    if(wheel_val> 25 && wheel_val< 35){   //wheel is turned right
+        //do something
+      }
+    else if(wheel_val> 55 && wheel_val< 65){  //wheel is in the middle
+        //do something
+      }
+     
+    else if(wheel_val> 85 && wheel_val< 95){  //wheel is turned left
+        //do something
+      } 
+    
 		start=millis();
 	}
 }
