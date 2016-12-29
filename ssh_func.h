@@ -2,6 +2,7 @@
 #include "libssh\libssh.h"
 #include <stdio.h>
 #include <string>
+
 //bool ssh_debug = true;//comment for no debug execution
 bool ssh_debug=false; //comment for normal execution
 //create ssh session
@@ -52,12 +53,16 @@ ssh_session create_ssh_connection(std::string ip_address) {
 	return my_ssh_session;
 };
 
-int shell_session(ssh_session session, std::string my_command, bool sonar_read) {
+std::string shell_session(ssh_session session, std::string my_command, bool sonar_read) {
 	ssh_channel kanali1;
 
 	int rc2;
 	char buffer[256];
-	int nbytes, sonar_var;
+	std::string buffer_str;
+	int nbytes;
+
+
+
 	//create a channel for communication
 	kanali1 = ssh_channel_new(session);
 	//check for errors
@@ -115,11 +120,8 @@ int shell_session(ssh_session session, std::string my_command, bool sonar_read) 
 	ssh_channel_free(kanali1);
 	//if the function is called for sonar reading return sonar value
 	if (sonar_read == true) {
-		sonar_var=atoi(buffer);	//convert string to int
-		if (ssh_debug == true) {
-			printf("ssh call get sonar: %d\n", sonar_var);
-		}
-		return sonar_var;
+		buffer_str = buffer;	//convert buffer from char to string
+		return buffer_str;
 	}
 	else {
 		return SSH_OK;

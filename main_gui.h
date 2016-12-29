@@ -26,7 +26,7 @@ bool main_debug = true; //comment for no debug execution
 //bool main_debug = false; //comment for normal execution
 
 
-int rc_pub=1;
+int rc_pub=1,bckgrd_counter=0;
 
 
 
@@ -90,6 +90,14 @@ namespace guiWopencv {
 	private: System::Windows::Forms::Label^  label4;
 	private: System::Windows::Forms::Label^  label5;
 	private: System::ComponentModel::BackgroundWorker^  backgroundWorker1;
+	private: System::Windows::Forms::Label^  label6;
+	private: System::Windows::Forms::Label^  label7;
+	private: System::Windows::Forms::Label^  label8;
+	private: System::Windows::Forms::Label^  label9;
+	private: System::Windows::Forms::Label^  label10;
+	private: System::Windows::Forms::Label^  label11;
+	private: System::Windows::Forms::Label^  label12;
+	private: System::Windows::Forms::Label^  label13;
 
 
 	protected:
@@ -120,6 +128,14 @@ namespace guiWopencv {
 			this->label4 = (gcnew System::Windows::Forms::Label());
 			this->label5 = (gcnew System::Windows::Forms::Label());
 			this->backgroundWorker1 = (gcnew System::ComponentModel::BackgroundWorker());
+			this->label6 = (gcnew System::Windows::Forms::Label());
+			this->label7 = (gcnew System::Windows::Forms::Label());
+			this->label8 = (gcnew System::Windows::Forms::Label());
+			this->label9 = (gcnew System::Windows::Forms::Label());
+			this->label10 = (gcnew System::Windows::Forms::Label());
+			this->label11 = (gcnew System::Windows::Forms::Label());
+			this->label12 = (gcnew System::Windows::Forms::Label());
+			this->label13 = (gcnew System::Windows::Forms::Label());
 			this->SuspendLayout();
 			// 
 			// button1
@@ -204,9 +220,9 @@ namespace guiWopencv {
 			this->label1->AutoSize = true;
 			this->label1->Location = System::Drawing::Point(256, 28);
 			this->label1->Name = L"label1";
-			this->label1->Size = System::Drawing::Size(35, 13);
+			this->label1->Size = System::Drawing::Size(53, 13);
 			this->label1->TabIndex = 9;
-			this->label1->Text = L"Sonar";
+			this->label1->Text = L"Sonar_FL";
 			// 
 			// label4
 			// 
@@ -221,7 +237,7 @@ namespace guiWopencv {
 			// label5
 			// 
 			this->label5->AutoSize = true;
-			this->label5->Location = System::Drawing::Point(297, 28);
+			this->label5->Location = System::Drawing::Point(315, 28);
 			this->label5->Name = L"label5";
 			this->label5->Size = System::Drawing::Size(27, 13);
 			this->label5->TabIndex = 11;
@@ -232,12 +248,92 @@ namespace guiWopencv {
 			this->backgroundWorker1->WorkerReportsProgress = true;
 			this->backgroundWorker1->DoWork += gcnew System::ComponentModel::DoWorkEventHandler(this, &MyForm::backgroundWorker1_DoWork);
 			// 
+			// label6
+			// 
+			this->label6->AutoSize = true;
+			this->label6->Location = System::Drawing::Point(403, 81);
+			this->label6->Name = L"label6";
+			this->label6->Size = System::Drawing::Size(27, 13);
+			this->label6->TabIndex = 13;
+			this->label6->Text = L"N/A";
+			// 
+			// label7
+			// 
+			this->label7->AutoSize = true;
+			this->label7->Location = System::Drawing::Point(344, 81);
+			this->label7->Name = L"label7";
+			this->label7->Size = System::Drawing::Size(57, 13);
+			this->label7->TabIndex = 12;
+			this->label7->Text = L"Sonar_CM";
+			// 
+			// label8
+			// 
+			this->label8->AutoSize = true;
+			this->label8->Location = System::Drawing::Point(315, 120);
+			this->label8->Name = L"label8";
+			this->label8->Size = System::Drawing::Size(27, 13);
+			this->label8->TabIndex = 15;
+			this->label8->Text = L"N/A";
+			// 
+			// label9
+			// 
+			this->label9->AutoSize = true;
+			this->label9->Location = System::Drawing::Point(256, 120);
+			this->label9->Name = L"label9";
+			this->label9->Size = System::Drawing::Size(54, 13);
+			this->label9->TabIndex = 14;
+			this->label9->Text = L"Sonar_BL";
+			// 
+			// label10
+			// 
+			this->label10->AutoSize = true;
+			this->label10->Location = System::Drawing::Point(495, 26);
+			this->label10->Name = L"label10";
+			this->label10->Size = System::Drawing::Size(27, 13);
+			this->label10->TabIndex = 17;
+			this->label10->Text = L"N/A";
+			// 
+			// label11
+			// 
+			this->label11->AutoSize = true;
+			this->label11->Location = System::Drawing::Point(436, 26);
+			this->label11->Name = L"label11";
+			this->label11->Size = System::Drawing::Size(55, 13);
+			this->label11->TabIndex = 16;
+			this->label11->Text = L"Sonar_FR";
+			// 
+			// label12
+			// 
+			this->label12->AutoSize = true;
+			this->label12->Location = System::Drawing::Point(495, 120);
+			this->label12->Name = L"label12";
+			this->label12->Size = System::Drawing::Size(27, 13);
+			this->label12->TabIndex = 19;
+			this->label12->Text = L"N/A";
+			// 
+			// label13
+			// 
+			this->label13->AutoSize = true;
+			this->label13->Location = System::Drawing::Point(436, 120);
+			this->label13->Name = L"label13";
+			this->label13->Size = System::Drawing::Size(56, 13);
+			this->label13->TabIndex = 18;
+			this->label13->Text = L"Sonar_BR";
+			// 
 			// MyForm
 			// 
 			this->AutoScaleDimensions = System::Drawing::SizeF(6, 13);
 			this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::Font;
-			this->ClientSize = System::Drawing::Size(384, 160);
+			this->ClientSize = System::Drawing::Size(565, 160);
 			this->ControlBox = false;
+			this->Controls->Add(this->label12);
+			this->Controls->Add(this->label13);
+			this->Controls->Add(this->label10);
+			this->Controls->Add(this->label11);
+			this->Controls->Add(this->label8);
+			this->Controls->Add(this->label9);
+			this->Controls->Add(this->label6);
+			this->Controls->Add(this->label7);
 			this->Controls->Add(this->label5);
 			this->Controls->Add(this->label4);
 			this->Controls->Add(this->label1);
@@ -516,24 +612,64 @@ private: System::Void DX_Click(System::Object^  sender, System::EventArgs^  e) {
 }
 
 private: System::Void backgroundWorker1_DoWork(System::Object^  sender, System::ComponentModel::DoWorkEventArgs^  e) {
-	int sonar, i;
+	int i, fnl_sonar[5],counter;
+	System::String^ tse = "TSE";
+	std::vector<int> sonar;
+
 	for (;;) {
 		//get sonar value
 		sonar = sonaread(sonar_pub_ssh_session);
+
+		
+
+		printf("Printing vector FROM main!\n");
+		counter = 0;
+		for (auto i = sonar.begin(); i != sonar.end(); ++i) {			
+			std::cout << *i << "\n";
+			fnl_sonar[counter] = *i;
+			printf("Sonar[%d] = %d \n", counter, fnl_sonar[counter]);
+			counter++;
+		}
 		Sleep(1000);
 		//send report with the value
-		backgroundWorker1->ReportProgress(sonar);	
+		for (i = 0; i < 5; i++) {
+			backgroundWorker1->ReportProgress(fnl_sonar[i]);
+			Sleep(1);
+		}
 	}
 }
 
- private: System::Void backgroundWorker1_ProgressChanged(System::Object^ sender, System::ComponentModel::ProgressChangedEventArgs^ e)
-		 {
-			 label5->Text = e->ProgressPercentage.ToString();	//update the label5
-		 }
+		 
+	private: System::Void backgroundWorker1_ProgressChanged(System::Object^ sender, System::ComponentModel::ProgressChangedEventArgs^ e)
+	{		
+			switch (bckgrd_counter) {
+			case 0 :
+				label5->Text = e->ProgressPercentage.ToString();	//update the label5
+				bckgrd_counter++;
+				break;
+			case 1:
+				label10->Text = e->ProgressPercentage.ToString();	//update the label10
+				bckgrd_counter++;
+				break;
+			case 2:
+				label6->Text = e->ProgressPercentage.ToString();	//update the label6
+				bckgrd_counter++;
+				break;
+			case 3:
+				label8->Text = e->ProgressPercentage.ToString();	//update the label8
+				bckgrd_counter++;
+				break;
+			case 4:
+				label12->Text = e->ProgressPercentage.ToString();	//update the label12
+				bckgrd_counter = 0;
+				break;
+			}
+			
+
+		}
 };
 
 
 
 
 }
-
