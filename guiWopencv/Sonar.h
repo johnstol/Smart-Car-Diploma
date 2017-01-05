@@ -18,7 +18,7 @@ std::vector<int> sonaread(ssh_session ssh_session) {
 	bool sonr_debug = false;//comment for normal execution
 
 	mycommand = "cat /home/onram/sonar.txt";	//read sonar
-	sonars_read = shell_session(ssh_session, mycommand,true);
+	sonars_read = sonar_shell_session(ssh_session, mycommand);
 	
 	for (i = 0; i<5; i++) {	// split buffer string in 5 pieces (one for every sonar) using "-" delimeter , convert them to int and pass them to an int array 
 		sonar[i] = atoi(sonars_read.substr(0, sonars_read.find(delimeter)).c_str());

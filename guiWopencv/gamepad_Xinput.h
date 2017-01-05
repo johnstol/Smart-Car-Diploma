@@ -80,11 +80,11 @@ public:
 					do {
 						if (state.mThumbRY < 0) { //move camera up
 							mycommand = "echo cu > /home/onram/camera.txt";
-							shell_session(pub_ssh_session, mycommand,false);
+							shell_session(pub_ssh_session, mycommand);
 						}
 						else {	//move camera down
 							mycommand = "echo cd > /home/onram/camera.txt";
-							shell_session(pub_ssh_session, mycommand,false);
+							shell_session(pub_ssh_session, mycommand);
 						}
 						sGamepad->getState(0, state);	//update gamepad state
 					} while (old_ry == state.mThumbRY);	//do the same action until user decides to stop (speed up joystick read)
@@ -97,12 +97,12 @@ public:
 					do {
 						if (state.mThumbRX < 0) {	//move camera left
 							mycommand = "echo cl > /home/onram/camera.txt";
-							shell_session(pub_ssh_session, mycommand,false);
+							shell_session(pub_ssh_session, mycommand);
 						}
 
 						else {	//move camera right
 							mycommand = "echo cr > /home/onram/camera.txt";
-							shell_session(pub_ssh_session, mycommand,false);
+							shell_session(pub_ssh_session, mycommand);
 						}
 						sGamepad->getState(0, state);	//update gamepad state
 					} while (old_rx == state.mThumbRX);	//do the same action until user decides to stop (speed up joystick read)
@@ -113,21 +113,21 @@ public:
 				//reset camera position
 				if (state.mButtons == 128) {
 					mycommand = "echo cc > /home/onram/camera.txt";
-					shell_session(pub_ssh_session, mycommand,false);
+					shell_session(pub_ssh_session, mycommand);
 				}
 
 				//Right/Left trigger used
 				//move forward (mf) right triger used
 				if (state.mRightTrigger != 0) {
 					mycommand = "echo mf > /home/onram/movement.txt";
-					shell_session(pub_ssh_session, mycommand,false);
+					shell_session(pub_ssh_session, mycommand);
 					if (moving == false)
 						moving = true;
 				}
 				//move backwards (mb) left triger used
 				else if (state.mLeftTrigger != 0) {
 					mycommand = "echo mb > /home/onram/movement.txt";
-					shell_session(pub_ssh_session, mycommand,false);
+					shell_session(pub_ssh_session, mycommand);
 					if (moving == false)
 						moving = true;
 				}
@@ -135,21 +135,21 @@ public:
 				else if (moving == true) {
 					moving = false;
 					mycommand = "echo ms > /home/onram/movement.txt";
-					shell_session(pub_ssh_session, mycommand,false);
+					shell_session(pub_ssh_session, mycommand);
 				}
 
 				//Lx stick triggered
 				//move right (mr)
 				if (state.mThumbLX > 0.3) {
 					mycommand = "echo mr > /home/onram/movement.txt";
-					shell_session(pub_ssh_session, mycommand,false);
+					shell_session(pub_ssh_session, mycommand);
 					if (steering == false)
 						steering = true;
 				}
 				//move left (ml)
 				else if (state.mThumbLX < -0.3) {
 					mycommand = "echo ml > /home/onram/movement.txt";
-					shell_session(pub_ssh_session, mycommand,false);
+					shell_session(pub_ssh_session, mycommand);
 					if (steering == false)
 						steering = true;
 				}
@@ -157,7 +157,7 @@ public:
 				else if (steering == true) {
 					steering = false;
 					mycommand = "echo ss > /home/onram/movement.txt";
-					shell_session(pub_ssh_session, mycommand,false);
+					shell_session(pub_ssh_session, mycommand);
 				}
 
 
@@ -217,13 +217,13 @@ public:
 					}
 					if (blue_lights == false) {			//  on/off blue lights
 						blue_lights = true;
-						mycommand = "gpio -g write 17 1";	//blue lights on
-						shell_session(pub_ssh_session, mycommand,false);
+						mycommand = "gpio write 7 1";	//blue lights on
+						shell_session(pub_ssh_session, mycommand);
 					}
 					else {
 						blue_lights = false;
-						mycommand = "gpio -g write 17 0";	//blue lights off
-						shell_session(pub_ssh_session, mycommand,false);
+						mycommand = "gpio write 7 0";	//blue lights off
+						shell_session(pub_ssh_session, mycommand);
 					}
 				}
 
@@ -232,13 +232,13 @@ public:
 											   //OutputDebugString("\n A button pressed\n");
 					if (white_lights == false) {			//  on/off white lights
 						white_lights = true;
-						mycommand = "gpio -g write 4 1";	//white lights on
-						shell_session(pub_ssh_session, mycommand,false);
+						mycommand = "gpio write 0 1";	//white lights on
+						shell_session(pub_ssh_session, mycommand);
 					}
 					else {
 						white_lights = false;
-						mycommand = "gpio -g write 4 0";	//white lights on
-						shell_session(pub_ssh_session, mycommand,false);
+						mycommand = "gpio write 0 0";	//white lights on
+						shell_session(pub_ssh_session, mycommand);
 					}
 				}
 
@@ -248,7 +248,7 @@ public:
 						printf("Xinput X pressed!\n");
 					}
 			//		mycommand = "mpg123 /home/john/Music/car-sound/Car_Horn_Honk1.mp3";
-			//		shell_session(pub_ssh_session, mycommand,false);
+			//		shell_session(pub_ssh_session, mycommand);
 				}
 				
 				//----------------Checking Buttons and Triggers ENDS---------------------//
@@ -407,11 +407,11 @@ public:
 									do {
 										if (js.lRz < 32511) {	//move camera up
 											mycommand = "echo cu > /home/onram/camera.txt";
-											shell_session(pub_ssh_session, mycommand,false);
+											shell_session(pub_ssh_session, mycommand);
 										}
 										else {	//move camera down
 											mycommand = "echo cd > /home/onram/camera.txt";
-											shell_session(pub_ssh_session, mycommand,false);
+											shell_session(pub_ssh_session, mycommand);
 										}
 										joystick->GetDeviceState(sizeof(DIJOYSTATE2), &js);	//update gamepad state
 									} while (old_ry == js.lRz);	//do the same action until user decides to stop (speed up joystick read)
@@ -425,12 +425,12 @@ public:
 									do {
 										if (js.lZ < 32511) {	//move camera left
 											mycommand = "echo cl > /home/onram/camera.txt";
-											shell_session(pub_ssh_session, mycommand,false);
+											shell_session(pub_ssh_session, mycommand);
 										}
 
 										else {	//move camera right
 											mycommand = "echo cr > /home/onram/camera.txt";
-											shell_session(pub_ssh_session, mycommand,false);
+											shell_session(pub_ssh_session, mycommand);
 										}
 										joystick->GetDeviceState(sizeof(DIJOYSTATE2), &js);	//update gamepad state
 									} while (old_rx == js.lZ);	//do the same action until user decides to stop (speed up joystick read)
@@ -441,14 +441,14 @@ public:
 								//reset camera position
 								if (js.rgbButtons[11] != NULL) {	//no change required for arch_lab's gamepad support
 									mycommand = "echo cc > /home/onram/camera.txt";
-									shell_session(pub_ssh_session, mycommand,false);
+									shell_session(pub_ssh_session, mycommand);
 								}
 
 								//Right/Left trigger used
 								//move forward (mf) right triger used
 								if (js.rgbButtons[7] != NULL) { //no change required for arch_lab's gamepad support
 									mycommand = "echo mf > /home/onram/movement.txt";
-									shell_session(pub_ssh_session, mycommand,false);
+									shell_session(pub_ssh_session, mycommand);
 									if (moving == false)
 										moving = true;
 								}
@@ -456,7 +456,7 @@ public:
 								//else if (js.rgbButtons[5] != NULL) { //uncoment for arch_lab gamepad
 								else if (js.rgbButtons[6] != NULL) {
 									mycommand = "echo mb > /home/onram/movement.txt";
-									shell_session(pub_ssh_session, mycommand,false);
+									shell_session(pub_ssh_session, mycommand);
 									if (moving == false)
 										moving = true;
 								}
@@ -464,21 +464,21 @@ public:
 								else if (moving == true) {
 									moving = false;
 									mycommand = "echo ms > /home/onram/movement.txt";
-									shell_session(pub_ssh_session, mycommand,false);
+									shell_session(pub_ssh_session, mycommand);
 								}
 
 								//Lx stick triggered
 								//move right (mr)
 								if (js.lX > 42511) {	//no change required for arch_lab's gamepad support
 									mycommand = "echo mr > /home/onram/movement.txt";
-									shell_session(pub_ssh_session, mycommand,false);
+									shell_session(pub_ssh_session, mycommand);
 									if (steering == false)
 										steering = true;
 								}
 								//move left (ml)
 								else if (js.lX < 22511) {	//no change required for arch_lab's gamepad support
 									mycommand = "echo ml > /home/onram/movement.txt";
-									shell_session(pub_ssh_session, mycommand,false);
+									shell_session(pub_ssh_session, mycommand);
 									if (steering == false)
 										steering = true;
 								}
@@ -486,7 +486,7 @@ public:
 								else if (steering == true) {
 									steering = false;
 									mycommand = "echo ss > /home/onram/movement.txt";
-									shell_session(pub_ssh_session, mycommand,false);
+									shell_session(pub_ssh_session, mycommand);
 								}
 
 								//Y button is pressed
@@ -543,13 +543,13 @@ public:
 								if (js.rgbButtons[2] != NULL) {
 									if (blue_lights == false) {			//  on/off blue lights
 										blue_lights = true;
-										mycommand = "gpio -g write 17 1";	//blue lights on
-										shell_session(pub_ssh_session, mycommand,false);
+										mycommand = "gpio write 7 1";	//blue lights on
+										shell_session(pub_ssh_session, mycommand);
 									}
 									else {
 										blue_lights = false;
-										mycommand = "gpio -g write 17 0";	//blue lights off
-										shell_session(pub_ssh_session, mycommand,false);
+										mycommand = "gpio write 7 0";	//blue lights off
+										shell_session(pub_ssh_session, mycommand);
 									}
 									if (pad_debug == true) {
 										printf("DX B button pressed\n");
@@ -561,13 +561,13 @@ public:
 								if (js.rgbButtons[1] != NULL) {
 									if (white_lights == false) {			//  on/off white lights
 										white_lights = true;
-										mycommand = "gpio -g write 4 1";	//white lights on
-										shell_session(pub_ssh_session, mycommand,false);
+										mycommand = "gpio  write 0 1";	//white lights on
+										shell_session(pub_ssh_session, mycommand);
 									}
 									else {
 										white_lights = false;
-										mycommand = "gpio -g write 4 0";	//white lights off
-										shell_session(pub_ssh_session, mycommand,false);
+										mycommand = "gpio write 0 0";	//white lights off
+										shell_session(pub_ssh_session, mycommand);
 									}
 									if (pad_debug == true) {
 										printf("A button pressed \n");
@@ -577,7 +577,7 @@ public:
 								//X button is pressed --maybe in future usage
 								if (js.rgbButtons[0] != NULL) {  //no change required for arch_lab's gamepad support
 									//mycommand = "mpg123 /home/johnny/car-sound/Car_Horn_Honk1.mp3";
-									//shell_session(pub_ssh_session, mycommand,false);
+									//shell_session(pub_ssh_session, mycommand);
 									if (pad_debug == true) {
 										printf("DX x pressed! \n");
 									}
