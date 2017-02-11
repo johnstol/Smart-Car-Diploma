@@ -11,8 +11,8 @@
 #include "ssh_func.h"
 #include <fstream>
 #include <dinput.h>
-bool pad_debug = true;	//comment for no debug execution
-//bool pad_debug = false; //comment for normal execution
+//bool pad_debug = true;	//comment for no debug execution
+bool pad_debug = false; //comment for normal execution
 
 LPDIRECTINPUT8 di;
 HRESULT hr;

@@ -22,8 +22,8 @@ std::string ip_address_stream;
 ssh_session pub_ssh_session,sonar_pub_ssh_session;
 
 bool connection_established = false, dxthread_started,xinputhread_started,DX_enable=false;
-bool main_debug = true; //comment for no debug execution
-//bool main_debug = false; //comment for normal execution
+//bool main_debug = true; //comment for no debug execution
+bool main_debug = false; //comment for normal execution
 
 
 int rc_pub=1,bckgrd_counter=0;
@@ -613,7 +613,6 @@ private: System::Void DX_Click(System::Object^  sender, System::EventArgs^  e) {
 
 private: System::Void backgroundWorker1_DoWork(System::Object^  sender, System::ComponentModel::DoWorkEventArgs^  e) {
 	int i, fnl_sonar[5],counter;
-	System::String^ tse = "TSE";
 	std::vector<int> sonar;
 
 	for (;;) {
@@ -621,13 +620,16 @@ private: System::Void backgroundWorker1_DoWork(System::Object^  sender, System::
 		sonar = sonaread(sonar_pub_ssh_session);
 
 		
-
-		printf("Printing vector FROM main!\n");
+		if (main_debug == true) {
+			printf("Printing vector FROM main!\n");
+		}
 		counter = 0;
 		for (auto i = sonar.begin(); i != sonar.end(); ++i) {			
 			std::cout << *i << "\n";
 			fnl_sonar[counter] = *i;
-			printf("Sonar[%d] = %d \n", counter, fnl_sonar[counter]);
+			if (main_debug == true) {
+				printf("Sonar[%d] = %d \n", counter, fnl_sonar[counter]);
+			}
 			counter++;
 		}
 		Sleep(1000);

@@ -124,6 +124,7 @@ std::string sonar_shell_session(ssh_session session, std::string my_command) {
 	return buffer_str;
 
 }
+
 int shell_session(ssh_session session, std::string my_command) {
 	ssh_channel kanali1;
 
@@ -193,7 +194,7 @@ int shell_session(ssh_session session, std::string my_command) {
 	return SSH_OK;
 	
 }
-//
+//check IP method
 bool check_input(std::string given_ip) {
 	std::string delimeter = ".";
 	std::string *token = new std::string[4];
