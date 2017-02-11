@@ -151,7 +151,7 @@ void loop(){
 		
 		//Move Forward (mf) if there are no obstacles
 		if(serial_input==mf){		//mf
-			if(DistSonFR>45 && DistSonFL>45){		//if distance is bigger than 45cm its ok move
+			if((DistSonFR>45 || DistSonFR== 0) && (DistSonFL>45 || DistSonFL == 0)){		//if distance is bigger than 45cm its ok move
 				digitalWrite(mo1f, HIGH);
 				digitalWrite(mo1b, LOW);
 			}
@@ -164,7 +164,7 @@ void loop(){
 		
 		//Move Backward (mb)
 		else if(serial_input==mb){	//mb
-      if(DistSonBR>45 && DistSonBL>45){    //if distance is bigger than 45cm its ok move
+      if((DistSonBR>45 ||DistSonBR == 0) && (DistSonBL>45 || DistSonBL == 0)){    //if distance is bigger than 45cm its ok move
   			digitalWrite(mo1f, LOW);
   			digitalWrite(mo1b, HIGH);
       }
@@ -205,11 +205,15 @@ void loop(){
 	if(myend-start>=1000){
 		
 		// Send ping, get ping time in microseconds (uS).
-		//unsigned int uS = sonar.ping(); 
+	
     timeSonFR = sonarFR.ping();
+  
     timeSonFL = sonarFL.ping();
+  
     timeSonBR = sonarBR.ping();
+  
     timeSonBL = sonarBL.ping();
+  
     timeSonCM = sonarCM.ping();
 		
 		
@@ -232,14 +236,17 @@ void loop(){
     Serial.println("-");
 
     wheel_val = analogRead(wheel);
-    if(wheel_val> 25 && wheel_val< 35){   //wheel is turned right
+    if(wheel_val> 35 && wheel_val< 50){   //wheel is turned right
+      //Serial.println("Right");
         //do something
       }
-    else if(wheel_val> 55 && wheel_val< 65){  //wheel is in the middle
+    else if(wheel_val> 65 && wheel_val< 80){  //wheel is in the middle
+      //Serial.println("Middle");
         //do something
       }
      
-    else if(wheel_val> 85 && wheel_val< 95){  //wheel is turned left
+    else if(wheel_val> 95 && wheel_val< 110){  //wheel is turned left
+      //Serial.println("Left");
         //do something
       } 
     
