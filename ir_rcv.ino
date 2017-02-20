@@ -14,6 +14,8 @@ int counter[RECEIVERS];
 int i, j;
 int command;
 
+unsigned long A,B;
+
 void setup() {
   Serial.begin(9600);
 
@@ -30,19 +32,29 @@ void setup() {
 
 
 int read_receivers() {
+  //6826
   command = B0000;
-  for (j = 0; j < 6826; j++) {
-    for (i = 0; i < RECEIVERS; i++) {
+  A=micros();
+  Serial.print("   "); 
+  //delayMicroseconds(25);
+  B=micros();
+  Serial.println(B-A);
+   
+      
+  for (j = 0; j < message_length; j++) {
+    for (i = 0; i < RECEIVERS; i++) {  
       if (irrecvs[i]->decode(&results)) {
         data[i][counter[i]] = results.value, HEX;
         counter[i] += 1;
         irrecvs[i]->resume();
+      }
         if (counter[i] == message_length) {
-          //Serial.print("\nres-");
-          //Serial.print(i);
-          //Serial.print(":");
           if (strstr(data[i], id) != NULL) {
-            Serial.print("Fou");
+            //delayMicroseconds(440);
+            //
+            //Serial.print("fo");
+            //
+           //delayMicroseconds(440);
             //delay(1);
             if (i == 0) {
               command = command | B0001;
@@ -60,7 +72,8 @@ int read_receivers() {
           memset(data[i], 0, sizeof(data[i]));
           counter[i] = 0;
         }
-      }
+      
+      delay(50);
     }
   }
   //Serial.println(command,BIN);
@@ -76,16 +89,5 @@ void loop() {
   Serial.print("#");
   Serial.print(command, BIN);
   Serial.println("#");
-  /*
-  if(commander > B0 and commander<B100){
-    Serial.println("#Midle#");
-  }
-  else if(commander > B11 and commander <B1000){
-    Serial.println("#Right#");
-  }
-  else if(commander > B111){
-    Serial.println("#Left#");
-  }
-*/
 
 }
