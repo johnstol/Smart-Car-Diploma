@@ -1,30 +1,35 @@
 #include <Servo.h>
 #include <NewPing.h>
 
-#define TRIGGER_PIN_FR  12  // Arduino pin tied to trigger pin on the ultrasonic sensor at frond right side of the car.
+#define TRIGGER_PIN_FR  13  // Arduino pin tied to trigger pin on the ultrasonic sensor at frond right side of the car.
 #define ECHO_PIN_FR     A0  // Arduino pin tied to echo pin on the ultrasonic sensor at frond right side of the car.
 
-#define TRIGGER_PIN_FL  11  // Arduino pin tied to trigger pin on the ultrasonic sensor at frond left side of the car.
+#define TRIGGER_PIN_FL  12  // Arduino pin tied to trigger pin on the ultrasonic sensor at frond left side of the car.
 #define ECHO_PIN_FL     A1  // Arduino pin tied to echo pin on the ultrasonic sensor at frond left side of the car.
 
-#define TRIGGER_PIN_BR  10  // Arduino pin tied to trigger pin on the ultrasonic sensor at back right side of the car.
+#define TRIGGER_PIN_BR  11  // Arduino pin tied to trigger pin on the ultrasonic sensor at back right side of the car.
 #define ECHO_PIN_BR     A2  // Arduino pin tied to echo pin on the ultrasonic sensor at back right side of the car.
 
-#define TRIGGER_PIN_BL  9  // Arduino pin tied to trigger pin on the ultrasonic sensor at back left side of the car.
+#define TRIGGER_PIN_BL  10  // Arduino pin tied to trigger pin on the ultrasonic sensor at back left side of the car.
 #define ECHO_PIN_BL     A3  // Arduino pin tied to echo pin on the ultrasonic sensor at back left side of the car.
 
-#define TRIGGER_PIN_CM  8  // Arduino pin tied to trigger pin on the ultrasonic sensor mounted on camera.
+#define TRIGGER_PIN_CM  9  // Arduino pin tied to trigger pin on the ultrasonic sensor mounted on camera.
 #define ECHO_PIN_CM     A4  // Arduino pin tied to echo pin on the ultrasonic sensor mounted on camera.
 
 
 #define wheel A5
 
+#define bumper 8
+
 
 #define MAX_DISTANCE 400 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
+
+#define stop_distance 40 //set distance for automated stop
 
 
 //wheel value
 int wheel_val=0;
+bool bumper_val;
 
 // NewPing setup of pins and maximum distance.
 NewPing sonarFR(TRIGGER_PIN_FR, ECHO_PIN_FR, MAX_DISTANCE); 
@@ -85,6 +90,9 @@ int DistSonFR = 0,
     DistSonBL = 0,
     DistSonCM = 0;
 
+//allow moving flags 
+bool moveFflag=true,moveBflag=true;
+
 void setup() {
 
 //Initializing Values
@@ -95,18 +103,33 @@ void setup() {
   
   servo2.attach(servo2_pin);
   servo2.write(90);
-  
+
+  //setup moving DC motor
   pinMode(mo1f,OUTPUT);
   pinMode(mo1b,OUTPUT);
-
+  
+  //setup streering DC motor
   pinMode(mo2f,OUTPUT);
   pinMode(mo2b,OUTPUT);
+
+  //setup bumper
+  pinMode(bumper,INPUT);
 
   Serial.begin(19200);  
   
 }
 
 void loop(){
+  //check bumper
+  bumper_val=digitalRead(bumper);
+  if(bumper_val==HIGH && moveFflag==false){ //not crashed anymore
+    allowmoving();  //refresh moving flags
+  }
+  else if(bumper_val==LOW){  //we have crashed - stop moving
+    digitalWrite(mo1f, LOW);
+    digitalWrite(mo1b, LOW);
+    allowmoving();  //refresh moving flags
+  }
 
 	if(serial_input!=0){
 		angle1=servo1.read();
@@ -151,7 +174,7 @@ void loop(){
 		
 		//Move Forward (mf) if there are no obstacles
 		if(serial_input==mf){		//mf
-			if(DistSonFR>45 && DistSonFL>45){		//if distance is bigger than 45cm its ok move
+			if(moveFflag==true){		//if distance is bigger than 45cm its ok move
 				digitalWrite(mo1f, HIGH);
 				digitalWrite(mo1b, LOW);
 			}
@@ -164,7 +187,7 @@ void loop(){
 		
 		//Move Backward (mb)
 		else if(serial_input==mb){	//mb
-      if(DistSonBR>45 && DistSonBL>45){    //if distance is bigger than 45cm its ok move
+      if(moveBflag==true){    //if distance is bigger than 45cm its ok move
   			digitalWrite(mo1f, LOW);
   			digitalWrite(mo1b, HIGH);
       }
@@ -205,11 +228,15 @@ void loop(){
 	if(myend-start>=1000){
 		
 		// Send ping, get ping time in microseconds (uS).
-		//unsigned int uS = sonar.ping(); 
+	
     timeSonFR = sonarFR.ping();
+  
     timeSonFL = sonarFL.ping();
+  
     timeSonBR = sonarBR.ping();
+  
     timeSonBL = sonarBL.ping();
+  
     timeSonCM = sonarCM.ping();
 		
 		
@@ -219,6 +246,8 @@ void loop(){
     DistSonBR = (timeSonBR / US_ROUNDTRIP_CM);
     DistSonBL = (timeSonBL / US_ROUNDTRIP_CM);
     DistSonCM = (timeSonCM / US_ROUNDTRIP_CM);
+
+    allowmoving();  //refresh moving flags
 
 		Serial.print(DistSonFR);
     Serial.print("-");
@@ -232,19 +261,42 @@ void loop(){
     Serial.println("-");
 
     wheel_val = analogRead(wheel);
-    if(wheel_val> 25 && wheel_val< 35){   //wheel is turned right
+    if(wheel_val> 35 && wheel_val< 50){   //wheel is turned right
+      //Serial.println("Right");
         //do something
       }
-    else if(wheel_val> 55 && wheel_val< 65){  //wheel is in the middle
+    else if(wheel_val> 65 && wheel_val< 80){  //wheel is in the middle
+      //Serial.println("Middle");
         //do something
       }
      
-    else if(wheel_val> 85 && wheel_val< 95){  //wheel is turned left
+    else if(wheel_val> 95 && wheel_val< 110){  //wheel is turned left
+      //Serial.println("Left");
         //do something
       } 
     
 		start=millis();
 	}
+}
+
+bool allowmoving(){ //check sensors/automated stop
+   if((DistSonFR>0 && DistSonFR<=stop_distance) || bumper_val==LOW || (DistSonFL>0 && DistSonFL<=stop_distance)){
+      digitalWrite(mo1f, LOW);
+      digitalWrite(mo1b, LOW);
+      moveFflag=false;
+   }
+   else{
+      moveFflag=true;
+   }
+
+   if((DistSonBR>0 && DistSonFR<=stop_distance) || (DistSonBL>0 && DistSonBL<=stop_distance)){
+      digitalWrite(mo1f, LOW);
+      digitalWrite(mo1b, LOW);
+      moveBflag=false;
+   }
+   else{
+      moveBflag=true;
+   }
 }
 
 
