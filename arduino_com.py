@@ -5,7 +5,7 @@ import threading
 
 
 #open serial
-ser = serial.Serial('/dev/ttyACM0', 19200)
+ser = serial.Serial('/dev/ttyACM0', 9600)
 #open files
 sf=open("/home/onram/sonar.txt","w");	#sf ---> sonar file
 cf=open("/home/onram/camera.txt","r+"); #cf ---> camera file
@@ -67,9 +67,3 @@ while 1:
 		mf.truncate()
 
 	time.sleep(0.01)
-
-
-	
-
-
-

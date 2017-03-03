@@ -115,7 +115,7 @@ void setup() {
   //setup bumper
   pinMode(bumper,INPUT);
 
-  Serial.begin(19200);  
+  Serial.begin(9600);  
   
 }
 
