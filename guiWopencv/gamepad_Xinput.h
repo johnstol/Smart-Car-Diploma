@@ -217,12 +217,12 @@ public:
 					}
 					if (blue_lights == false) {			//  on/off blue lights
 						blue_lights = true;
-						mycommand = "gpio write 7 1";	//blue lights on
+						mycommand = "gpio write 0 1";	//blue lights on
 						shell_session(pub_ssh_session, mycommand);
 					}
 					else {
 						blue_lights = false;
-						mycommand = "gpio write 7 0";	//blue lights off
+						mycommand = "gpio write 0 0";	//blue lights off
 						shell_session(pub_ssh_session, mycommand);
 					}
 				}
@@ -232,12 +232,12 @@ public:
 											   //OutputDebugString("\n A button pressed\n");
 					if (white_lights == false) {			//  on/off white lights
 						white_lights = true;
-						mycommand = "gpio write 0 1";	//white lights on
+						mycommand = "gpio write 1 1";	//white lights on
 						shell_session(pub_ssh_session, mycommand);
 					}
 					else {
 						white_lights = false;
-						mycommand = "gpio write 0 0";	//white lights on
+						mycommand = "gpio write 1 0";	//white lights on
 						shell_session(pub_ssh_session, mycommand);
 					}
 				}
@@ -543,12 +543,12 @@ public:
 								if (js.rgbButtons[2] != NULL) {
 									if (blue_lights == false) {			//  on/off blue lights
 										blue_lights = true;
-										mycommand = "gpio write 7 1";	//blue lights on
+										mycommand = "gpio write 0 1";	//blue lights on
 										shell_session(pub_ssh_session, mycommand);
 									}
 									else {
 										blue_lights = false;
-										mycommand = "gpio write 7 0";	//blue lights off
+										mycommand = "gpio write 0 0";	//blue lights off
 										shell_session(pub_ssh_session, mycommand);
 									}
 									if (pad_debug == true) {
@@ -561,12 +561,12 @@ public:
 								if (js.rgbButtons[1] != NULL) {
 									if (white_lights == false) {			//  on/off white lights
 										white_lights = true;
-										mycommand = "gpio  write 0 1";	//white lights on
+										mycommand = "gpio  write 1 1";	//white lights on
 										shell_session(pub_ssh_session, mycommand);
 									}
 									else {
 										white_lights = false;
-										mycommand = "gpio write 0 0";	//white lights off
+										mycommand = "gpio write 1 0";	//white lights off
 										shell_session(pub_ssh_session, mycommand);
 									}
 									if (pad_debug == true) {
