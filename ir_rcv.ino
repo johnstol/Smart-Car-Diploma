@@ -13,7 +13,7 @@ SimpleTimer timer;
 
 char data[RECEIVERS][message_length];
 
-char id = "Jo";
+char id[4] = "John";
 int counter[RECEIVERS];
 int i, j;
 int command;
@@ -48,14 +48,13 @@ void read_receivers() {
   //check buffers
 
   for (i = 0; i < RECEIVERS; i++ ) {
-
-    chr_position = strchr(data[i], 'J');
+    chr_position = strchr(data[i], id[0]);
     if (chr_position) {
-      chr_position = strchr(chr_position + 1, 'o');
+      chr_position = strchr(chr_position + 1, id[1]);
       if (chr_position) {
-        chr_position = strchr(chr_position + 1, 'h');
+        chr_position = strchr(chr_position + 1, id[2]);
         if (chr_position) {
-          chr_position = strchr(chr_position + 1, 'n');
+          chr_position = strchr(chr_position + 1, id[3]);
           if (chr_position) { //found!
             if (i == 0) {
               command = command | B0001;
