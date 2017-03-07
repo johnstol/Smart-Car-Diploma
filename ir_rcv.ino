@@ -1,3 +1,5 @@
+#include <SimpleTimer.h>
+
 #include <IRremote.h>
 
 #define RECEIVERS 4
@@ -7,14 +9,86 @@ IRrecv *irrecvs[RECEIVERS];
 
 decode_results results;
 
+SimpleTimer timer;
 
 char data[RECEIVERS][message_length];
-char id = "John";
+
+char id = "Jo";
 int counter[RECEIVERS];
 int i, j;
 int command;
+int command_hist = 0;
 
-unsigned long A,B;
+bool clear_hist = false;
+
+char * chr_position;
+
+void read_receivers() {
+  //6826
+  command = B0000;
+
+  for (i = 0; i < RECEIVERS; i++) {
+    if (irrecvs[i]->decode(&results)) {
+      if (counter[i] < message_length) { //pass value to buffer
+        data[i][counter[i]] = results.value, HEX;
+        irrecvs[i]->resume();
+        counter[i]++;
+
+      }
+      else {
+        memset(data[i], 0, sizeof(data[i]));
+        data[i][0] = results.value, HEX;
+        irrecvs[i]->resume();
+        counter[i] = 1;
+      }
+    }
+  }
+
+
+  //check buffers
+
+  for (i = 0; i < RECEIVERS; i++ ) {
+
+    chr_position = strchr(data[i], 'J');
+    if (chr_position) {
+      chr_position = strchr(chr_position + 1, 'o');
+      if (chr_position) {
+        chr_position = strchr(chr_position + 1, 'h');
+        if (chr_position) {
+          chr_position = strchr(chr_position + 1, 'n');
+          if (chr_position) { //found!
+            if (i == 0) {
+              command = command | B0001;
+            }
+            else if (i == 1) {
+              command = command | B0010;
+            }
+            else if (i == 2) {
+              command = command | B0100;
+            }
+            else {
+              command = command | B1000;
+            }
+            //memset(data[i], 0, sizeof(data[i]));
+          }
+        }
+      }
+      if (clear_hist == true) {
+        clear_hist = false;
+        command_hist = B0000;
+      }
+      command_hist = command_hist | command;
+    }
+  }
+}
+
+void printcommand() {
+  Serial.print("#");
+  Serial.print(command_hist, BIN);
+  Serial.println("#");
+  clear_hist = true;
+}
+
 
 void setup() {
   Serial.begin(9600);
@@ -28,66 +102,13 @@ void setup() {
     irrecvs[i]->enableIRIn();
     counter[i] = 0;
   }
-}
 
-
-int read_receivers() {
-  //6826
-  command = B0000;
-  //A=micros();
-  Serial.print("   "); 
-  //delayMicroseconds(25);
-  //B=micros();
-  //Serial.println(B-A);
-   
-      
-  for (j = 0; j < message_length; j++) {
-    for (i = 0; i < RECEIVERS; i++) {  
-      if (irrecvs[i]->decode(&results)) {
-        data[i][counter[i]] = results.value, HEX;
-        counter[i] += 1;
-        irrecvs[i]->resume();
-      }
-        if (counter[i] == message_length) {
-          if (strstr(data[i], id) != NULL) {
-            //delayMicroseconds(440);
-            //
-            //Serial.print("fo");
-            //
-           //delayMicroseconds(440);
-            //delay(1);
-            if (i == 0) {
-              command = command | B0001;
-            }
-            else if (i == 1) {
-              command = command | B0010;
-            }
-            else if (i == 2) {
-              command = command | B0100;
-            }
-            else {
-              command = command | B1000;
-            }
-          }
-          memset(data[i], 0, sizeof(data[i]));
-          counter[i] = 0;
-        }
-      
-      delay(50);
-    }
-  }
-  //Serial.println(command,BIN);
-  return command;
+  timer.setInterval(20, read_receivers);
+  timer.setInterval(500, printcommand);
 }
 
 
 
 void loop() {
-
-  //--------Read Receivers-----------------
-  command = read_receivers();
-  Serial.print("#");
-  Serial.print(command, BIN);
-  Serial.println("#");
-
+  timer.run();
 }
