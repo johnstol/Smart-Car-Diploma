@@ -1,2 +1,0 @@
-# Smart car Diploma thesis
-
