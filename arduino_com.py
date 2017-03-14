@@ -48,7 +48,7 @@ while 1:
 		cf.seek(0)
 		cf.write("0")
 	elif cam_com[0] != "0":
-		ser.write(cam_com[0])
+		ser.write(cam_com[0]+"\n")
 		cf.seek(0)
 		cf.write("0")
 		cf.truncate()
@@ -61,9 +61,9 @@ while 1:
 		mf.seek(0)
 		mf.write("0")
 	elif mov_com[0] != "0":
-		ser.write(mov_com[0])
+		ser.write(mov_com[0]+"\n")
 		mf.seek(0)
 		mf.write("0")
 		mf.truncate()
-
+	
 	time.sleep(0.01)
