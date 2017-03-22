@@ -3,6 +3,7 @@ import serial
 import time
 import thread
 import threading
+import os
 
 
 #open serial
@@ -101,6 +102,8 @@ def fwdcom():
 def followmefun():
 	global red,green,mf,ser,serin
 	print("Follow me started!")
+	#clear input buffer
+	serin.reset_input_buffer()
 	prev_cmd="NULL"
 	ZeroCount=0
 	keep_Rolling=False
@@ -117,13 +120,14 @@ def followmefun():
 			green=False
 			GPIO.output(red_led,True)	#Light on RED LED
 			red=True
-			print("followme stop")
+			print("followme stopped")
 			break
 		
 		else:
 			reading=serin.readline()	#read arduino
 			sensors=(reading.split("#")[1])	#get only the value ex: 1101
-			print(sensors)
+			#uncommend for debug
+			#print(sensors)
 			#if we get 5 Zeros continuesly stop
 			if(sensors == "0"):
 				if(red):
@@ -233,38 +237,32 @@ green=False;
 while True:
 	
 	
-	if ((GPIO.input(green_btn)) and (GPIO.input(red_btn))):
+
+	if (GPIO.input(red_btn)):
 		ser.write("ms\n")
 		time.sleep(0.1)
 		ser.write("ss\n")
 		killFlag=True
-		GPIO.output(red_led,False)	#Light off RED LED
-		GPIO.output(green_led,False)	#Light off Green LED
-		#clean up
-		GPIO.cleanup()
-		print("Terminated!")
-		#terminate
-		break	
+		time.sleep(3)
+		if(GPIO.input(green_btn)):
+			GPIO.output(red_led,False)	#Light off RED LED
+			GPIO.output(green_led,False)	#Light off Green LED
+			print("Terminated!")
+			
+		else:	
+			print("Shuting down...")
+			os.system('sudo shutdown -h now')
+		#clean up GPIOs
+		GPIO.cleanup()	
+		break
+		
 	
-	if (GPIO.input(green_btn)):	#start button (near green LED) pressed
+	elif (GPIO.input(green_btn)):	#start button (near green LED) pressed
 		GPIO.output(green_led,True)	#Light on Green LED
 		green=True
 		GPIO.output(red_led,False)	#Light off RED LED
 		red=False
-		
-		'''
-		#led testing
-		while True:
-			if (GPIO.input(red_btn)):
-				GPIO.output(green_led,False)
-				green=False
-				GPIO.output(red_led,True)
-				red=True
-				break
-			time.sleep(0.05)
-		'''
-
-		#Follow me started
+		#start Follow me 
 		followmefun()
 		
 	fwdcom()	
