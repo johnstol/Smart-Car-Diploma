@@ -45,10 +45,14 @@ while 1:
 		ipaddr = run_cmd(cmd)
 		if(ipaddr.find(".") <0):
 			ipaddr = run_cmd(cmd1)
-			if(ipaddr.find(".") >0):
-				cmd=cmd1
-			
-		lcd.message('IP %s' % ( ipaddr ) )
-		sleep(2)
+			if(ipaddr.find(".") <0):
+				lcd.message('No IP')
+			else:
+				lcd.message('IP %s' % ( ipaddr ) )
+			#	cmd=cmd1
+		else:	
+			lcd.message('IP %s' % ( ipaddr ) )
+		
+		sleep(1)
 
 		
