@@ -8,7 +8,7 @@ from bt_proximity import BluetoothRSSI
 import sys
 
 #open serial
-ser = serial.Serial('/dev/ttyACM0', 9600)
+ser = serial.Serial('/dev/ttyACM0', 9600)	#arduino1 connected via USB
 serin = serial.Serial('/dev/ttyUSB0', 9600)	#arduino2 connected via USB
 #open files
 sf=open("/home/onram/sonar.txt","w");	#sf ---> sonar file
@@ -32,6 +32,8 @@ blue_led=7
 red_btn=18
 green_btn=16
 rssi=0
+sensors=0
+sonar_serns=[None]*5
 
 killFlag=False
 
@@ -54,20 +56,39 @@ class mythread (threading.Thread):
 		self.name = name
 	def run(self):
 		print "Starting " + self.name
-		if (self.threadID==1):
+		if (self.threadID == 1):
 			read_sonar()
-		elif (self.threadID==2):
+		elif (self.threadID == 2):
 			read_blutooth()
+		elif (self.threadID == 3):
+			read_ir()
 		print "Exiting " + self.name
 		
 
 def read_sonar():
-	global killFlag
+	global killFlag,ser,sonar
+	debug=False
 	while not (killFlag):
 		sonar=ser.readline()
 		sf.seek(0)
 		sf.write(sonar)
 		sf.truncate()
+		sonar_list=sonar.split("-")
+		
+		if(debug):
+			print(sonar_list)
+			print(len(sonar_list))
+			
+		if len(sonar_list) == 6:
+			del sonar_list[5]	#delete the last item, its \r\n
+			for i in range (0,5):
+				if (sonar_list[i] is None):	#if an item is empty turn it to zero
+					sonar_list[i]=0
+			sonar_serns=map(int,sonar_list) #cast string list to int
+			
+			if (debug):
+				print(sonar_serns)
+
 		time.sleep(0.02)
 	return		
 
@@ -85,7 +106,7 @@ def read_blutooth():
 	while not(killFlag):
 		#get rssi
 		temp_rssi=btrssi.get_rssi()
-		if (debug=True):
+		if (debug):
 			print("temp_rssi: %s",temp_rssi)
 		
 		#disconnected
@@ -116,6 +137,14 @@ def read_blutooth():
 		time.sleep(0.5)
 	return	
 
+
+def read_ir():
+	global serin,sensors,killFlag
+	while not (killFlag):
+		reading=serin.readline()	#read arduino anyway - keep serial-buffer empty
+		sensors=(reading.split("#")[1])	#get only the value ex: 1101	
+	return
+	
 	
 def fwdcom():
 	global cf,mf,ser
@@ -150,19 +179,19 @@ def fwdcom():
 
 
 def followmefun():
-	global red,green,mf,ser,serin,rssi,blue
-	debug=False
+	global red,green,mf,ser,sensors,rssi,blue
+	debug=True
 	print("Follow me started!")
 	
 	#clear input buffer
-	serin.reset_input_buffer()
+	#serin.reset_input_buffer()
 	prev_cmd="NULL"
 	ZeroCount=0
 	keep_Rolling=False
 	while True:
 		send_command1="NULL"	#mf,ms,mb
 		send_command2="NULL"	#mr,ml,ss
-		
+
 		#Stop Follow me 
 		if (GPIO.input(red_btn)):	#stop button (near red LED) pressed
 			ser.write("ms\n")
@@ -176,8 +205,6 @@ def followmefun():
 			break
 		
 		else:
-			reading=serin.readline()	#read arduino anyway - keep serial-buffer empty
-			sensors=(reading.split("#")[1])	#get only the value ex: 1101
 			if(debug):
 				print"rssi: %d" %rssi
 			if(rssi>-5 and rssi <0):
@@ -293,10 +320,11 @@ def followmefun():
 #create thread
 sonarthread= mythread(1, "Sonar_thread")
 Bluetoothread= mythread(2, "Bluetooth_thread")
-
+irthread=mythread(3,"IR_thread")
 #start thread
 sonarthread.start()
 Bluetoothread.start()
+irthread.start()
 
 GPIO.output(red_led,True) ##set RED on	----------15
 GPIO.output(green_led,False) ##set GREEN off---------13
