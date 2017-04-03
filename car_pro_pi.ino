@@ -115,7 +115,7 @@ void setup() {
 
   Serial.begin(9600);
 
-  timer.setInterval(200, read_sonars);
+  timer.setInterval(100, read_sonars);
   timer.setInterval(10, move_me);
 
 }
@@ -296,7 +296,7 @@ void allowmoving() { //check sensors/automated stop
     moveFflag = true;
   }
 
-  if ((DistSonBR > 0 && DistSonFR <= stop_distance) || (DistSonBL > 0 && DistSonBL <= stop_distance)) {
+  if ((DistSonBR > 0 && DistSonBR <= stop_distance) || (DistSonBL > 0 && DistSonBL <= stop_distance)) {
     digitalWrite(mo1f, LOW);
     digitalWrite(mo1b, LOW);
     moveBflag = false;
