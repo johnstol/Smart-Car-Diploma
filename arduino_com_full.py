@@ -31,11 +31,19 @@ green_led=13
 blue_led=7
 red_btn=18
 green_btn=16
-rssi=0
-sensors=0
-sonar_serns=[None]*5
 
+
+#########################################################
+#############sonar_serns=[FR,FL,BR,BL,CM]################
+#########################################################
+sonar_serns=[None]*5	
 killFlag=False
+red=True;
+green=False;
+blue=False;
+rssi=0
+avoid_dist=30
+
 
 GPIO.setmode(GPIO.BOARD) ## Use board pin numbering
 
@@ -60,13 +68,11 @@ class mythread (threading.Thread):
 			read_sonar()
 		elif (self.threadID == 2):
 			read_blutooth()
-		elif (self.threadID == 3):
-			read_ir()
 		print "Exiting " + self.name
 		
 
 def read_sonar():
-	global killFlag,ser,sonar
+	global killFlag,ser,sonar_serns
 	debug=False
 	while not (killFlag):
 		sonar=ser.readline()
@@ -81,17 +87,20 @@ def read_sonar():
 			
 		if len(sonar_list) == 6:
 			del sonar_list[5]	#delete the last item, its \r\n
+			
 			for i in range (0,5):
-				if (sonar_list[i] is None):	#if an item is empty turn it to zero
+				if not sonar_list[i] :	#if an item is empty turn it to zero
 					sonar_list[i]=0
+				elif len(sonar_list[i])>3:
+					sonar_list[i]=0
+
 			sonar_serns=map(int,sonar_list) #cast string list to int
 			
 			if (debug):
 				print(sonar_serns)
 
-		time.sleep(0.02)
+		time.sleep(0.05)
 	return		
-
 	
 def read_blutooth():
 	global rssi, killFlag
@@ -137,14 +146,90 @@ def read_blutooth():
 		time.sleep(0.5)
 	return	
 
+def send_my_command(command,mytime):
+	global ser
+	if not mytime:
+		ser.write(command+"\n")
+	elif (mytime == 0):	
+		for i in range (0,10):		
+			ser.write(command+"\n")
+			time.sleep(0.01)
+	else:
+		for i in range (0,10):		
+			ser.write(command+"\n")
+			time.sleep(mytime)
 
-def read_ir():
-	global serin,sensors,killFlag
-	while not (killFlag):
-		reading=serin.readline()	#read arduino anyway - keep serial-buffer empty
-		sensors=(reading.split("#")[1])	#get only the value ex: 1101	
 	return
+
+def avoid_fun():
+	global sonar_serns
+	safe_to_avoid=70
+	#reset camera
+	send_my_command("cc",0)
+	time.sleep(0.5)
+	#move backwards
+	while(sonar_serns[0]<safe_to_avoid and sonar_serns[1]<safe_to_avoid):
+		send_my_command("mb",0)
+		time.sleep(0.1)	
+		send_my_command("ms",0)
+		time.sleep(0.1)
+		
+	send_my_command("ms",0)	
+	time.sleep(1)
+	#turn camera Right and get Right distance
+	send_my_command("cR",0)
+	time.sleep(2)
+	right_dist=sonar_serns[4]
+	#turn camera Left and get Left distance
+	send_my_command("cL",0)
+	time.sleep(2)
+	left_dist=sonar_serns[4]
+	#reset camera
+	send_my_command("cc",0)
+	time.sleep(0.5)
 	
+	print('right:', right_dist, ' and left: ',left_dist)
+	if (right_dist<70 and left_dist<70):
+		print "Cannot be avoided"
+		avoidance=False
+	else:
+		avoidance=True
+		if (right_dist < left_dist):
+                        print"Going left"
+			send_my_command("ml",0)
+			time.sleep(0.2)
+			send_my_command("mf",0)
+			time.sleep(2.3)
+			send_my_command("ms",0)
+			time.sleep(0.2)
+			send_my_command("mr",0)
+			time.sleep(0.2)
+			send_my_command("mf",0)
+			time.sleep(0.2)
+			
+		else:
+                        print"Going right"
+			send_my_command("mr",0)
+			time.sleep(0.2)
+			send_my_command("mf",0)
+			time.sleep(2.3)
+			send_my_command("ms",0)
+			time.sleep(0.2)
+			send_my_command("ml",0)
+			time.sleep(0.2)
+			send_my_command("mf",0)
+			time.sleep(0.2)
+			
+			
+	return avoidance
+	
+def check_obstacle():
+	global sonar_serns
+	#check FR and FL sensors
+	if ((sonar_serns[0] <= avoid_dist and sonar_serns[0] != 0) or (sonar_serns[1] <= avoid_dist and sonar_serns[1] != 0)):
+		return True
+	else:
+		return False
 	
 def fwdcom():
 	global cf,mf,ser
@@ -176,27 +261,36 @@ def fwdcom():
 	
 	return	
 		
-
-
 def followmefun():
-	global red,green,mf,ser,sensors,rssi,blue
-	debug=True
+	global red,green,mf,ser,rssi,blue
+	debug=False
 	print("Follow me started!")
 	
 	#clear input buffer
-	#serin.reset_input_buffer()
+	serin.reset_input_buffer()
+	reading=serin.readline()	#read arduino anyway - keep serial_buffer empty
+	sensors=(reading.split("#")[1])	#get only the value ex: 1101	
+	avoid_counter=0 #counts the number of continuesly calls of avoid_fun
+	avoid_threshold=3
 	prev_cmd="NULL"
 	ZeroCount=0
 	keep_Rolling=False
 	while True:
+	
+		#clear input buffer
+		serin.reset_input_buffer()
+		reading=serin.readline()	#read arduino anyway - keep serial_buffer empty
+		sensors=(reading.split("#")[1])	#get only the value ex: 1101		
+		
+		#clear commands
 		send_command1="NULL"	#mf,ms,mb
 		send_command2="NULL"	#mr,ml,ss
 
 		#Stop Follow me 
 		if (GPIO.input(red_btn)):	#stop button (near red LED) pressed
-			ser.write("ms\n")
-			time.sleep(0.1)
-			ser.write("ss\n")
+			send_my_command("ms",0)
+			time.sleep(0.1)			
+			send_my_command("ss",0)
 			GPIO.output(green_led,False)	#Light off Green LED
 			green=False
 			GPIO.output(red_led,True)	#Light on RED LED
@@ -207,6 +301,7 @@ def followmefun():
 		else:
 			if(debug):
 				print"rssi: %d" %rssi
+			#client is close enough to stop
 			if(rssi>-5 and rssi <0):
 				if not(blue):
 					GPIO.output(blue_led,True)	#Light on Blue LED
@@ -215,13 +310,15 @@ def followmefun():
 				time.sleep(0.1)
 				ser.write("ss\n")
 			else:
+				##Light off Blue LED
 				if (blue):
-					GPIO.output(blue_led,False)	#Light on Blue LED
+					GPIO.output(blue_led,False)	
 					blue=False
 
-				#uncommend for debug
 				if (debug):
 					print(sensors)
+					
+				print(sensors)	
 				#if we get 5 Zeros continuesly stop
 				if(sensors == "0"):
 					if(red):
@@ -236,6 +333,7 @@ def followmefun():
 						keep_Rolling=False
 						send_command1="ms"
 						send_command2="ss"
+				#
 				else:
 					keep_Rolling=True
 					if(ZeroCount>0):
@@ -284,82 +382,74 @@ def followmefun():
 							GPIO.output(red_led,True)	#Light on RED LED
 							red=True
 				
-				#send command2	
-				if(send_command2=="mr" or send_command2=="ml"):
-					#turn right/left
-					for i in range (0,10):		
-						ser.write(send_command2+"\n")
-						time.sleep(0.01)
-					time.sleep(0.2)
-					#stop turning
-					for i in range (0,10):		
-						ser.write("ss\n")
-						time.sleep(0.01)
-
-				elif(send_command2=="ss"):
-					for i in range (0,10):		
-						ser.write("ss\n")
-						time.sleep(0.01)
-				
+				#check for obstacles
+				if(check_obstacle()):
+					#if we tried less times than avoid_threshold there's still hope to avoid the obstacle
+					#else the car cannot avoid this obstacle avoid it manually ;)
+					if (avoid_counter<avoid_threshold):
+						print "Avoid algorithm engaged"	
+						#time.sleep(2)
+						if not(avoid_fun()):
+							avoid_counter=3
+						else:
+							avoid_counter+=1
+						
 				else:
-					for i in range (0,10):		
-						ser.write(send_command1+"\n")
-						time.sleep(0.01)
-				
-				time.sleep(0.1)		
+					avoid_counter=0
+					#send command2
+					if send_command2 is not None:
+						send_my_command(send_command2,0)
+							
+						time.sleep(0.2)
 						
-				#send command1
-				for i in range (0,10):		
-					ser.write(send_command1+"\n")
-					time.sleep(0.01)
-						
-				
-				#time.sleep(0.5)	
+						#stop turning
+						if(send_command2=="mr" or send_command2=="ml"):
+							send_my_command("ss",0)											
+					time.sleep(0.1)				
+					#send command1
+					if send_command1 is not None:
+						send_my_command(send_command1,0)
 	return
 		
 #create thread
 sonarthread= mythread(1, "Sonar_thread")
 Bluetoothread= mythread(2, "Bluetooth_thread")
-irthread=mythread(3,"IR_thread")
+#irthread=mythread(3,"IR_thread")
 #start thread
 sonarthread.start()
 Bluetoothread.start()
-irthread.start()
+#irthread.start()
 
 GPIO.output(red_led,True) ##set RED on	----------15
 GPIO.output(green_led,False) ##set GREEN off---------13
 GPIO.output(blue_led,False) ##set GREEN off---------7
 
-red=True;
-green=False;
-blue=False;
 
 
 while True:
-	
-	
 
 	if (GPIO.input(red_btn)):
 		ser.write("ms\n")
 		time.sleep(0.1)
 		ser.write("ss\n")
-		killFlag=True
-		time.sleep(3)
+		time.sleep(2)
 		if(GPIO.input(green_btn)):
+			killFlag=True
 			GPIO.output(green_led,True)	#Light off Green LED
 			time.sleep(1)
 			GPIO.output(green_led,False)	#Light off Green LED
 			print("Shuting down...")
 			os.system('sudo shutdown -h now')
-		else:
+		elif(GPIO.input(red_btn)):
+			killFlag=True
+			time.sleep(2)
 			GPIO.output(red_led,False)	#Light off RED LED
 			GPIO.output(green_led,False)	#Light off Green LED
 			print("Terminated!")
-		#clean up GPIOs
-		GPIO.cleanup()	
-		break
-		
-	
+			#clean up GPIOs
+			GPIO.cleanup()	
+			break
+
 	elif (GPIO.input(green_btn)):	#start button (near green LED) pressed
 		GPIO.output(green_led,True)	#Light on Green LED
 		green=True
