@@ -44,7 +44,7 @@ NewPing sonarCM(TRIGGER_PIN_CM, ECHO_PIN_CM, MAX_DISTANCE);
 //serial input for new orders
 //int serial_input = "NULL";
 
-String serial_input="";
+String serial_input = "";
 boolean stringComplete = false;
 
 //servo steps
@@ -89,7 +89,7 @@ int DistSonFR = 0,
     DistSonCM = 0;
 
 //allow moving flags
-bool moveFflag = true, moveBflag = true;
+bool moveFflag = true, moveBflag = true, moving_forward = false, moving_backwards = false;
 
 void setup() {
 
@@ -113,7 +113,7 @@ void setup() {
   //setup bumper
   pinMode(bumper, INPUT);
 
-  Serial.begin(9600);
+  Serial.begin(115200);
 
   timer.setInterval(100, read_sonars);
   timer.setInterval(10, move_me);
@@ -177,7 +177,9 @@ void read_sonars() {
 }
 
 void move_me() {
+
   //check bumper
+
   bumper_val = digitalRead(bumper);
   if (bumper_val == HIGH && moveFflag == false) { //not crashed anymore
     allowmoving();  //refresh moving flags
@@ -188,7 +190,10 @@ void move_me() {
     allowmoving();  //refresh moving flags
   }
 
+  //allowmoving();
+
   if (stringComplete) {
+    Serial.println("$ok$");
     stringComplete = false;
     angle1 = servo1.read();
     angle2 = servo2.read();
@@ -201,7 +206,7 @@ void move_me() {
       servo1.write(angle1);
     }  //cu
 
-    //Likewise, Camera Down (cd)
+    //Camera Down (cd)
     else if (serial_input == "cd" && servo1.read() > 0) { //cd
       angle1 -= angle_mov1;
       servo1.write(angle1);
@@ -225,9 +230,21 @@ void move_me() {
       servo2.write(90);
     } //cc
 
+    //Camera Right position
+    else if (serial_input == "cR") {        //cR
+      servo2.write(20);
+    } //cR
+
+    //Camera Left position
+    else if (serial_input == "cL") {        //cL
+      servo2.write(180);
+    } //cL
+
     //Move Forward (mf) if there are no obstacles
     if (serial_input == "mf") {   //mf
-      if (moveFflag == true) {    //if distance is bigger than 45cm its ok move
+      moving_backwards = false;
+      if (moveFflag == true) {    //if movement in this direction isn't resticted move on
+        moving_forward = true;
         digitalWrite(mo1f, HIGH);
         digitalWrite(mo1b, LOW);
       }
@@ -241,7 +258,9 @@ void move_me() {
 
     //Move Backward (mb)
     else if (serial_input == "mb") {  //mb
-      if (moveBflag == true) { //if distance is bigger than 45cm its ok move
+      moving_forward = false;
+      if (moveBflag == true) { //if movement in this direction isn't resticted move on
+        moving_backwards = true;
         digitalWrite(mo1f, LOW);
         digitalWrite(mo1b, HIGH);
       }
@@ -268,6 +287,8 @@ void move_me() {
 
     //Stop Moving (ms)
     if (serial_input == "ms") {   //ms
+      moving_forward = false;
+      moving_backwards = false;
       digitalWrite(mo1f, LOW);
       digitalWrite(mo1b, LOW);
     }   //ms
@@ -280,7 +301,7 @@ void move_me() {
     }   //ss
 
   }
-  serial_input="";
+  serial_input = "";
 
 
 }
@@ -288,8 +309,11 @@ void move_me() {
 
 void allowmoving() { //check sensors/automated stop
   if ((DistSonFR > 0 && DistSonFR <= stop_distance) || bumper_val == LOW || (DistSonFL > 0 && DistSonFL <= stop_distance)) {
-    digitalWrite(mo1f, LOW);
-    digitalWrite(mo1b, LOW);
+    if (moving_forward == true) {
+      digitalWrite(mo1f, LOW);
+      digitalWrite(mo1b, LOW);
+    }
+    moving_forward = false;
     moveFflag = false;
   }
   else {
@@ -297,8 +321,11 @@ void allowmoving() { //check sensors/automated stop
   }
 
   if ((DistSonBR > 0 && DistSonBR <= stop_distance) || (DistSonBL > 0 && DistSonBL <= stop_distance)) {
-    digitalWrite(mo1f, LOW);
-    digitalWrite(mo1b, LOW);
+    if (moving_backwards == true) {
+      digitalWrite(mo1f, LOW);
+      digitalWrite(mo1b, LOW);
+    }
+    moving_backwards = false;
     moveBflag = false;
   }
   else {
@@ -307,7 +334,7 @@ void allowmoving() { //check sensors/automated stop
 }
 
 
-int serialEvent(){
+int serialEvent() {
   while (Serial.available()) {
     // get the new byte:
     char inChar = (char)Serial.read();
