@@ -8,7 +8,7 @@ from bt_proximity import BluetoothRSSI
 import sys
 
 #open serial
-ser = serial.Serial('/dev/ttyACM0', 9600)	#arduino1 connected via USB
+ser = serial.Serial('/dev/ttyACM0', 115200)	#arduino1 connected via USB 19200
 serin = serial.Serial('/dev/ttyUSB0', 9600)	#arduino2 connected via USB
 #open files
 sf=open("/home/onram/sonar.txt","w");	#sf ---> sonar file
@@ -38,11 +38,14 @@ green_btn=16
 #########################################################
 sonar_serns=[None]*5	
 killFlag=False
+pause_sonar=False
 red=True;
 green=False;
 blue=False;
 rssi=0
 avoid_dist=30
+ser_read_lock=threading.Lock()
+turn_side=0 #1:right 2:left 0:none (its first time?)
 
 
 GPIO.setmode(GPIO.BOARD) ## Use board pin numbering
@@ -70,12 +73,15 @@ class mythread (threading.Thread):
 			read_blutooth()
 		print "Exiting " + self.name
 		
-
 def read_sonar():
 	global killFlag,ser,sonar_serns
 	debug=False
 	while not (killFlag):
-		sonar=ser.readline()
+		#serial read with lock
+		with ser_read_lock:
+			sonar="$ok$"
+			while (sonar.find("-")<0):
+				sonar=ser.readline()
 		sf.seek(0)
 		sf.write(sonar)
 		sf.truncate()
@@ -91,7 +97,7 @@ def read_sonar():
 			for i in range (0,5):
 				if not sonar_list[i] :	#if an item is empty turn it to zero
 					sonar_list[i]=0
-				elif len(sonar_list[i])>3:
+				elif len(sonar_list[i])>3:	#if the item's size is more than 3chars its wrong turn it to zero
 					sonar_list[i]=0
 
 			sonar_serns=map(int,sonar_list) #cast string list to int
@@ -105,7 +111,8 @@ def read_sonar():
 def read_blutooth():
 	global rssi, killFlag
 	debug=False
-	
+	same_val_threshold=9
+	zerocounter_threshold=4
 	#create bluetooth object with the following address
 	btrssi = BluetoothRSSI('98:D3:31:80:15:9C')
 	zerocounter=0
@@ -134,12 +141,12 @@ def read_blutooth():
 				sameval_counter=0
 		
 		#if we get the same value up to 10 times continuesly it means that bluetooth disconnected
-		if(sameval_counter>9):
+		if(sameval_counter>same_val_threshold):
 			rssi=0
 			sameval_counter=0
 			disconnected=True
 		#re-connect
-		if (zerocounter > 4)or disconnected:
+		if (zerocounter > zerocounter_threshold)or disconnected:
 			btrssi = BluetoothRSSI('98:D3:31:80:15:9C')
 			zerocounter=0	
 		
@@ -148,89 +155,256 @@ def read_blutooth():
 
 def send_my_command(command,mytime):
 	global ser
+	#send command one time with no wait for ack
 	if not mytime:
 		ser.write(command+"\n")
+	#send command 10 times in 0.1s (need for movement on abrasive surface or if the car carries large weight)
 	elif (mytime == 0):	
 		for i in range (0,10):		
 			ser.write(command+"\n")
 			time.sleep(0.01)
+	#send command untill you receive an ack		
+	elif (mytime=="ack"):
+		ack=''
+		with ser_read_lock:
+			while (ack != "ok"):
+				ser.write(command+"\n")
+				for i in range (0,10):	
+					ack=ser.readline()
+					if ack.find('ok') > 0:
+						ack="ok"
+						break
+
+	#send command 10 times with given time		
 	else:
-		for i in range (0,10):		
-			ser.write(command+"\n")
-			time.sleep(mytime)
+		mytime_type=type(mytime)
+		if(mytime_type.__name__=="float" or mytime_type.__name__=="int"):
+			for i in range (0,10):		
+				ser.write(command+"\n")
+				time.sleep(mytime)
+		else:
+			print "mytime type is:",mytime_type,".Expected float or int"
 
 	return
 
-def avoid_fun():
-	global sonar_serns
-	safe_to_avoid=70
+def avoid_fun(count_call_times):
+	#count_call_times=the number of continuesly calls of avoid_fun
+	global sonar_serns,ser,turn_side
+	safe_to_avoid=70 #70cm
+	safe_to_stop=40	#40cm
+	safe_obstacle_dist=30 #30cm
+	mv_threshold=2.4 #2.4s
+	duration=0
+	debug=False
+	
 	#reset camera
-	send_my_command("cc",0)
+	send_my_command("cc","ack")
+	
+	if(debug):
+		print "count_call_times:", count_call_times
+	
+	#if its first time (posible new circle of continious calls) clear the previous turn_side you chose (you dont need it anymore)
+	if(count_call_times==0):
+		turn_side=0
 	time.sleep(0.5)
 	#move backwards
-	while(sonar_serns[0]<safe_to_avoid and sonar_serns[1]<safe_to_avoid):
-		send_my_command("mb",0)
-		time.sleep(0.1)	
-		send_my_command("ms",0)
-		time.sleep(0.1)
-		
-	send_my_command("ms",0)	
-	time.sleep(1)
-	#turn camera Right and get Right distance
-	send_my_command("cR",0)
-	time.sleep(2)
-	right_dist=sonar_serns[4]
-	#turn camera Left and get Left distance
-	send_my_command("cL",0)
-	time.sleep(2)
-	left_dist=sonar_serns[4]
-	#reset camera
-	send_my_command("cc",0)
-	time.sleep(0.5)
+	if(sonar_serns[0]==1 and sonar_serns[1]==1):
+		print"small obstacle"
+		send_my_command("mb","ack")
+		time.sleep(mv_threshold)
+	else:	
+		while( not check_obstacle("front_and", safe_to_avoid)):
+			send_my_command("mb","ack")
+			if (check_obstacle("back",safe_obstacle_dist)):
+				if(debug):
+					print "Stop"
+				break
+
+	#STOP
+	send_my_command("ms","ack")	
+
+	#check length
+	if((check_obstacle("back",safe_obstacle_dist)) and (check_obstacle("front_and", safe_to_avoid))):		
+		if (debug):
+			print "Not enough length"
+		length_param=False
+	else:
+		length_param=True
+
+	#check right/left distance
+	#turn_side is used for avoid bigger obstacles
+	if(length_param):
+		if (debug):
+			print "Length is ok"
+
+		if(turn_side==0):
+			#turn camera Right and get Right distance
+			send_my_command("cR","ack")
+			
+			time.sleep(2)
+			right_dist=sonar_serns[4]
+			
+			#turn camera Left and get Left distance
+			send_my_command("cL","ack")
+			
+			time.sleep(2)
+			left_dist=sonar_serns[4]
+			
+			#reset camera
+			send_my_command("cc","ack")
+			
+			time.sleep(0.5)
+		elif(turn_side==1):	#go again right if you can
+			send_my_command("cR","ack")
+			time.sleep(2)
+			right_dist=sonar_serns[4]
+			left_dist=0
+			
+		elif(turn_side==2): #go again left if you can	
+			send_my_command("cL","ack")
+			time.sleep(2)
+			left_dist=sonar_serns[4]
+			right_dist=0
+		else:
+			print "something went wrong (turn_side=",turn_side ,')'
+			right_dist=0
+			left_dist=0
 	
-	print('right:', right_dist, ' and left: ',left_dist)
-	if (right_dist<70 and left_dist<70):
-		print "Cannot be avoided"
+		if(debug):
+			print'right:', right_dist, ' and left: ',left_dist
+	
+	#reasons why an obstacle can not be avoided
+	if (not length_param or (right_dist<safe_to_avoid and left_dist<safe_to_avoid)):
+		if(debug):
+			print "Cannot be avoided"
 		avoidance=False
+	#avoid, You can do it!	
 	else:
 		avoidance=True
+		#avoid going left
 		if (right_dist < left_dist):
-                        print"Going left"
-			send_my_command("ml",0)
-			time.sleep(0.2)
-			send_my_command("mf",0)
-			time.sleep(2.3)
-			send_my_command("ms",0)
-			time.sleep(0.2)
-			send_my_command("mr",0)
-			time.sleep(0.2)
-			send_my_command("mf",0)
-			time.sleep(0.2)
+			if (debug):
+				print"Going left"
 			
+			turn_side=2
+			#look for obstacle
+			send_my_command("cL","ack")
+			time.sleep(0.2)
+			#move Left
+			send_my_command("ml","ack")
+			time.sleep(0.4)
+			send_my_command("ss","ack")
+			time.sleep(0.2)
+						
+			#move forward
+			#stop when you find an obstacle or the given time passed
+			start=time.time()
+			while(duration<mv_threshold):
+				#check distance
+				if(sonar_serns[4]<safe_to_stop or check_obstacle("front",safe_obstacle_dist)):	
+					if(debug):
+						print'camera:',sonar_serns[4],'Front:',sonar_serns[0],'-',sonar_serns[1]
+					break	
+				
+				send_my_command("mf","ack")
+				ending=time.time()
+				duration=ending-start
+			#STOP	
+			send_my_command("ms","ack")	
+			
+			#debug
+			if (debug):
+				if(duration>=mv_threshold):
+					print('Duration:',duration)
+			
+			
+			#reset camera
+			send_my_command("cc","ack")
+			time.sleep(0.2)
+			#move right
+			send_my_command("mr","ack")
+			time.sleep(0.6)
+			send_my_command("ss","ack")
+			time.sleep(0.2)
+			send_my_command("mf","ack")
+			time.sleep(1)
+			#reset steering wheel
+			send_my_command("ml","ack")
+			time.sleep(0.2)
+			send_my_command("ss","ack")
+			time.sleep(0.2)
+			# end of algorithm
+		#avoid going right	
 		else:
-                        print"Going right"
-			send_my_command("mr",0)
+			if (debug):
+				print"Going right"
+			turn_side=1	
 			time.sleep(0.2)
-			send_my_command("mf",0)
-			time.sleep(2.3)
-			send_my_command("ms",0)
+			#look for obstacle
+			send_my_command("cR","ack")
 			time.sleep(0.2)
-			send_my_command("ml",0)
-			time.sleep(0.2)
-			send_my_command("mf",0)
+			#move Right
+			send_my_command("mr","ack")
+			time.sleep(0.4)
+			send_my_command("ss","ack")
 			time.sleep(0.2)
 			
+			#move forward
+			#stop when you find an obstacle or the given time passed
+			start=time.time()
+			while(duration<mv_threshold):
+				#check distance
+				if(sonar_serns[4]<safe_to_stop or check_obstacle("front",safe_obstacle_dist)):	
+					if(debug):
+						print'camera:',sonar_serns[4],'Front:',sonar_serns[0],'-',sonar_serns[1]
+					break	
+					
+				send_my_command("mf","ack")
+				ending=time.time()
+				duration=ending-start
+			#STOP	
+			send_my_command("ms","ack")	
+			#debug
+			if (debug):
+				if(duration>=mv_threshold):
+					print('Duration:',duration)
+				
+			#reset camera
+			send_my_command("cc","ack")
+			time.sleep(0.2)
+			#move left 
+			send_my_command("ml","ack")
+			time.sleep(0.6)
+			send_my_command("ss","ack")
+			time.sleep(0.2)
+			send_my_command("mf","ack")
+			time.sleep(1)
+			#reset steering wheel
+			send_my_command("mr","ack")
+			time.sleep(0.2)
+			send_my_command("ss","ack")
+			time.sleep(0.2)
+			#end of algorithm
 			
 	return avoidance
 	
-def check_obstacle():
+def check_obstacle(direction,avoid_dist):
 	global sonar_serns
+	found_obstacle=False
 	#check FR and FL sensors
-	if ((sonar_serns[0] <= avoid_dist and sonar_serns[0] != 0) or (sonar_serns[1] <= avoid_dist and sonar_serns[1] != 0)):
-		return True
+	if(direction=="front"):
+		if ((sonar_serns[0] <= avoid_dist and sonar_serns[0] != 0) or (sonar_serns[1] <= avoid_dist and sonar_serns[1] != 0)):
+			found_obstacle=True
+	elif (direction=="front_and"):
+		if((sonar_serns[0] <= avoid_dist and sonar_serns[0] != 0) and (sonar_serns[1] <= avoid_dist and sonar_serns[1] != 0)):
+			found_obstacle=True		
+	elif(direction=="back"):
+		if ((sonar_serns[2] <= avoid_dist and sonar_serns[2] != 0) or (sonar_serns[3] <= avoid_dist and sonar_serns[3] != 0)):
+			found_obstacle=True
 	else:
-		return False
-	
+		print"Wrong value in direction. You gave:",direction,"waiting 'front or back' "
+	return found_obstacle
+
 def fwdcom():
 	global cf,mf,ser
 	#forward camera command
@@ -241,7 +415,7 @@ def fwdcom():
 		cf.seek(0)
 		cf.write("0")
 	elif cam_com[0] != "0":
-		ser.write(cam_com[0]+"\n")
+		send_my_command(cam_com[0],'');
 		cf.seek(0)
 		cf.write("0")
 		cf.truncate()
@@ -254,7 +428,7 @@ def fwdcom():
 		mf.seek(0)
 		mf.write("0")
 	elif mov_com[0] != "0":
-		ser.write(mov_com[0]+"\n")
+		send_my_command(mov_com[0],'');
 		mf.seek(0)
 		mf.write("0")
 		mf.truncate()
@@ -262,19 +436,17 @@ def fwdcom():
 	return	
 		
 def followmefun():
-	global red,green,mf,ser,rssi,blue
+	global red,green,ser,serin,rssi,blue
 	debug=False
 	print("Follow me started!")
-	
-	#clear input buffer
-	serin.reset_input_buffer()
-	reading=serin.readline()	#read arduino anyway - keep serial_buffer empty
-	sensors=(reading.split("#")[1])	#get only the value ex: 1101	
 	avoid_counter=0 #counts the number of continuesly calls of avoid_fun
-	avoid_threshold=3
+	avoid_threshold=3 #max number of allowed continious calls of avoid_fun
+	keep_Rolling_threshold=4 #max zeros of sensors (IR) untill the car stops moving
 	prev_cmd="NULL"
 	ZeroCount=0
+	keep_rolling_mode= True #enable/disable keep rolling mode
 	keep_Rolling=False
+	
 	while True:
 	
 		#clear input buffer
@@ -288,9 +460,9 @@ def followmefun():
 
 		#Stop Follow me 
 		if (GPIO.input(red_btn)):	#stop button (near red LED) pressed
-			send_my_command("ms",0)
+			send_my_command("ms","ack")
 			time.sleep(0.1)			
-			send_my_command("ss",0)
+			send_my_command("ss","ack")
 			GPIO.output(green_led,False)	#Light off Green LED
 			green=False
 			GPIO.output(red_led,True)	#Light on RED LED
@@ -306,9 +478,9 @@ def followmefun():
 				if not(blue):
 					GPIO.output(blue_led,True)	#Light on Blue LED
 					blue=True
-				ser.write("ms\n")
-				time.sleep(0.1)
-				ser.write("ss\n")
+				send_my_command("ms","ack")
+				time.sleep(0.1)			
+				send_my_command("ss","ack")
 			else:
 				##Light off Blue LED
 				if (blue):
@@ -318,24 +490,31 @@ def followmefun():
 				if (debug):
 					print(sensors)
 					
-				print(sensors)	
-				#if we get 5 Zeros continuesly stop
+				#sensors (IR) 0
 				if(sensors == "0"):
 					if(red):
 							GPIO.output(red_led,False)	#Light off RED LED
 							red=False
-					if(ZeroCount<4):
-						if(keep_Rolling):
-							send_command1="mf"
-						ZeroCount+=1
+					#keep rolling mode		
+					if (keep_rolling_mode):		
+						if(ZeroCount<4):
+							if(keep_Rolling):
+								send_command1="mf"
+							ZeroCount+=1
+						else:
+							ZeroCount=0;
+							keep_Rolling=False
+							send_command1="ms"
+							send_command2="ss"
+					#no keep rolling mode				
 					else:
-						ZeroCount=0;
-						keep_Rolling=False
 						send_command1="ms"
 						send_command2="ss"
-				#
+		
 				else:
-					keep_Rolling=True
+					if (keep_rolling_mode):
+						keep_Rolling=True
+						
 					if(ZeroCount>0):
 						ZeroCount=0
 						
@@ -383,13 +562,13 @@ def followmefun():
 							red=True
 				
 				#check for obstacles
-				if(check_obstacle()):
+				if(check_obstacle("front",avoid_dist)):
 					#if we tried less times than avoid_threshold there's still hope to avoid the obstacle
 					#else the car cannot avoid this obstacle avoid it manually ;)
 					if (avoid_counter<avoid_threshold):
 						print "Avoid algorithm engaged"	
 						#time.sleep(2)
-						if not(avoid_fun()):
+						if not(avoid_fun(avoid_counter)):
 							avoid_counter=3
 						else:
 							avoid_counter+=1
@@ -432,7 +611,7 @@ while True:
 		ser.write("ms\n")
 		time.sleep(0.1)
 		ser.write("ss\n")
-		time.sleep(2)
+		time.sleep(1)
 		if(GPIO.input(green_btn)):
 			killFlag=True
 			GPIO.output(green_led,True)	#Light off Green LED
@@ -442,9 +621,9 @@ while True:
 			os.system('sudo shutdown -h now')
 		elif(GPIO.input(red_btn)):
 			killFlag=True
-			time.sleep(2)
 			GPIO.output(red_led,False)	#Light off RED LED
 			GPIO.output(green_led,False)	#Light off Green LED
+			time.sleep(2)
 			print("Terminated!")
 			#clean up GPIOs
 			GPIO.cleanup()	
@@ -461,10 +640,3 @@ while True:
 	fwdcom()	
 
 	time.sleep(0.01)	
-
-
-
-
-
-
-
