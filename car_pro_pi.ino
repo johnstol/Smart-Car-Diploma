@@ -26,7 +26,7 @@
 
 #define MAX_DISTANCE 400 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
 
-#define stop_distance 30 //set distance for automated stop (40)
+#define stop_distance 40 //set distance for automated stop (40)
 
 SimpleTimer timer;
 
@@ -148,6 +148,12 @@ void read_sonars() {
 
   allowmoving();  //refresh moving flags
 
+  //for small object avoidance
+  if (bumper_val == LOW) {
+    DistSonFR=1;
+    DistSonFL=1;    
+  }
+
   Serial.print(DistSonFR);
   Serial.print("-");
   Serial.print(DistSonFL);
@@ -185,8 +191,10 @@ void move_me() {
     allowmoving();  //refresh moving flags
   }
   else if (bumper_val == LOW) { //we have crashed - stop moving
-    digitalWrite(mo1f, LOW);
-    digitalWrite(mo1b, LOW);
+    if(moving_forward == true){
+      digitalWrite(mo1f, LOW);
+      digitalWrite(mo1b, LOW);
+    } 
     allowmoving();  //refresh moving flags
   }
 
