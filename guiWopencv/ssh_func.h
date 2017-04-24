@@ -27,7 +27,7 @@ ssh_session create_ssh_connection(std::string ip_address) {
 	//check if connection is ok
 	if (rc != SSH_OK)
 	{
-		if (ssh_debug == true) {
+		if (ssh_debug) {
 			printf("Error Connecting: %s\n", ssh_get_error(my_ssh_session));
 		}
 		ssh_free(my_ssh_session); //free the session
@@ -41,7 +41,7 @@ ssh_session create_ssh_connection(std::string ip_address) {
 		//check if authentication is successfull
 		if (rc != SSH_AUTH_SUCCESS)
 		{
-			if (ssh_debug == true) {
+			if (ssh_debug) {
 				printf("Error authenticating with password: %s\n", ssh_get_error(my_ssh_session));	//get error code
 			}
 			ssh_disconnect(my_ssh_session);	//disconnect from session
@@ -53,7 +53,7 @@ ssh_session create_ssh_connection(std::string ip_address) {
 	return my_ssh_session;
 };
 
-std::string shell_session(ssh_session session, std::string my_command, bool sonar_read) {
+std::string sonar_shell_session(ssh_session session, std::string my_command) {
 	ssh_channel kanali1;
 
 	int rc2;
@@ -67,7 +67,7 @@ std::string shell_session(ssh_session session, std::string my_command, bool sona
 	kanali1 = ssh_channel_new(session);
 	//check for errors
 	if (kanali1 == NULL) {
-		if (ssh_debug == true) {
+		if (ssh_debug) {
 			printf("\n channel error!!!!\n");
 		}
 	}
@@ -75,7 +75,7 @@ std::string shell_session(ssh_session session, std::string my_command, bool sona
 	rc2 = ssh_channel_open_session(kanali1);
 	//check for errors
 	if (rc2 != SSH_OK) {
-		if (ssh_debug == true) {
+		if (ssh_debug) {
 			printf("\n open_session error!!!!\n");
 		}
 		ssh_channel_free(kanali1);
@@ -84,7 +84,78 @@ std::string shell_session(ssh_session session, std::string my_command, bool sona
 	rc2 = ssh_channel_request_exec(kanali1, my_command.c_str());
 	//check for errors
 	if (rc2 != SSH_OK) {
-		if (ssh_debug == true) {
+		if (ssh_debug) {
+			printf("\n channel request error!!!!\n");
+		}
+		ssh_channel_free(kanali1);
+		ssh_channel_close(kanali1);
+	}
+	//	Read data from the channel
+	nbytes = ssh_channel_read(kanali1, buffer, sizeof(buffer), 0);
+	while (nbytes > 0)
+	{	//with success output gets printed
+		if (fwrite(buffer, 1, nbytes, stdout) != nbytes)
+		{	//fwrite faced some errors
+			ssh_channel_close(kanali1);
+			ssh_channel_free(kanali1);
+			if (ssh_debug) {
+				printf("\n fwrite error!!!!\n");
+			}
+		}
+		nbytes = ssh_channel_read(kanali1, buffer, sizeof(buffer), 0); //re-read
+	}
+	if (nbytes < 0)	//channel read failed
+	{
+		ssh_channel_close(kanali1);
+		ssh_channel_free(kanali1);
+		if (ssh_debug) {
+			printf("\n nbytes error!!!!\n");
+		}
+	}
+	//Send an end of file on the channel.
+	ssh_channel_send_eof(kanali1);
+	//clode the channel
+	ssh_channel_close(kanali1);
+	//free the channel
+	ssh_channel_free(kanali1);
+	//if the function is called for sonar reading return sonar value
+
+	buffer_str = buffer;	//convert buffer from char to string
+	return buffer_str;
+
+}
+int shell_session(ssh_session session, std::string my_command) {
+	ssh_channel kanali1;
+
+	int rc2;
+	char buffer[256];
+	std::string buffer_str;
+	int nbytes;
+
+
+
+	//create a channel for communication
+	kanali1 = ssh_channel_new(session);
+	//check for errors
+	if (kanali1 == NULL) {
+		if (ssh_debug) {
+			printf("\n channel error!!!!\n");
+		}
+	}
+	//Open a session channel
+	rc2 = ssh_channel_open_session(kanali1);
+	//check for errors
+	if (rc2 != SSH_OK) {
+		if (ssh_debug) {
+			printf("\n open_session error!!!!\n");
+		}
+		ssh_channel_free(kanali1);
+	}
+	//Run a shell command without an interactive shell
+	rc2 = ssh_channel_request_exec(kanali1, my_command.c_str());
+	//check for errors
+	if (rc2 != SSH_OK) {
+		if (ssh_debug) {
 			printf("\n channel request error!!!!\n");
 		}
 		ssh_channel_free(kanali1);
@@ -98,7 +169,7 @@ std::string shell_session(ssh_session session, std::string my_command, bool sona
 		{	//fwrite faced some errors
 			ssh_channel_close(kanali1);
 			ssh_channel_free(kanali1);
-			if (ssh_debug == true) {
+			if (ssh_debug) {
 				printf("\n fwrite error!!!!\n");
 			}
 		}
@@ -108,7 +179,7 @@ std::string shell_session(ssh_session session, std::string my_command, bool sona
 	{
 		ssh_channel_close(kanali1);
 		ssh_channel_free(kanali1);
-		if (ssh_debug == true) {
+		if (ssh_debug) {
 			printf("\n nbytes error!!!!\n");
 		}
 	}
@@ -118,16 +189,11 @@ std::string shell_session(ssh_session session, std::string my_command, bool sona
 	ssh_channel_close(kanali1);
 	//free the channel
 	ssh_channel_free(kanali1);
-	//if the function is called for sonar reading return sonar value
-	if (sonar_read == true) {
-		buffer_str = buffer;	//convert buffer from char to string
-		return buffer_str;
-	}
-	else {
-		return SSH_OK;
-	}
-}
 
+	return SSH_OK;
+	
+}
+//
 bool check_input(std::string given_ip) {
 	std::string delimeter = ".";
 	std::string *token = new std::string[4];

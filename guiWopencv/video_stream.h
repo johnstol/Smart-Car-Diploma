@@ -18,12 +18,13 @@ public:
 	System::String ^ ip_address_stream;
 
 	void stream() {
-		if (debugstream == true) {
+		if (debugstream ) {
 			printf("Thread %s .\n", AppDomain::GetCurrentThreadId().ToString());
 		}
 		
 		cv::VideoCapture vcap;
 		cv::Mat image;
+		cv::namedWindow("Output Window",CV_WINDOW_NORMAL);
 
 		//convert std string to System string
 		msclr::interop::marshal_context context;
@@ -39,7 +40,7 @@ public:
 		}
 		else {
 			for (;;) {
-				while (stop_strem == false) {
+				while (!stop_strem) {
 
 					if (!vcap.read(image)) {	//capture image
 						cv::waitKey();			//if no image captured wait
@@ -50,7 +51,7 @@ public:
 					}
 				}
 				Sleep(10);
-				if (terminate_stream_proc == true) break;	////terminate the tread the app is closing
+				if (terminate_stream_proc ) break;	////terminate the tread the app is closing
 			}
 		}
 		vcap.release();

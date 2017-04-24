@@ -11,8 +11,8 @@
 #include "ssh_func.h"
 #include <fstream>
 #include <dinput.h>
-bool pad_debug = true;	//comment for no debug execution
-//bool pad_debug = false; //comment for normal execution
+//bool pad_debug = true;	//comment for no debug execution
+bool pad_debug = false; //comment for normal execution
 
 LPDIRECTINPUT8 di;
 HRESULT hr;
@@ -34,7 +34,7 @@ BOOL CALLBACK enumCallback(const DIDEVICEINSTANCE* instance, VOID* context) {
 	// If it failed, then we can't use this joystick. (Maybe the user unplugged
 	// it while we were in the middle of enumerating it.)
 	if (FAILED(hr)) {
-		if (pad_debug == true) {
+		if (pad_debug) {
 			printf("HR FAILED\n");
 		}
 		return DIENUM_CONTINUE;
@@ -66,9 +66,9 @@ public:
 		NvGamepadXInput* gamepadXInput = new NvGamepadXInput;
 		sGamepad = gamepadXInput;
 		for (;;) {
-			while (running_xinput == true) {
+			while (running_xinput) {
 				//MSG msg;
-				Sleep(100);	//slowdown gamepad read for multiple same-button calls fix
+				//Sleep(100);	//slowdown gamepad read for multiple same-button calls fix
 				//update gamepad stare
 				sGamepad->getState(0, state);
 				//----------------Checking Buttons and Triggers---------------------//
@@ -80,11 +80,11 @@ public:
 					do {
 						if (state.mThumbRY < 0) { //move camera up
 							mycommand = "echo cu > /home/onram/camera.txt";
-							shell_session(pub_ssh_session, mycommand,false);
+							shell_session(pub_ssh_session, mycommand);
 						}
 						else {	//move camera down
 							mycommand = "echo cd > /home/onram/camera.txt";
-							shell_session(pub_ssh_session, mycommand,false);
+							shell_session(pub_ssh_session, mycommand);
 						}
 						sGamepad->getState(0, state);	//update gamepad state
 					} while (old_ry == state.mThumbRY);	//do the same action until user decides to stop (speed up joystick read)
@@ -97,12 +97,12 @@ public:
 					do {
 						if (state.mThumbRX < 0) {	//move camera left
 							mycommand = "echo cl > /home/onram/camera.txt";
-							shell_session(pub_ssh_session, mycommand,false);
+							shell_session(pub_ssh_session, mycommand);
 						}
 
 						else {	//move camera right
 							mycommand = "echo cr > /home/onram/camera.txt";
-							shell_session(pub_ssh_session, mycommand,false);
+							shell_session(pub_ssh_session, mycommand);
 						}
 						sGamepad->getState(0, state);	//update gamepad state
 					} while (old_rx == state.mThumbRX);	//do the same action until user decides to stop (speed up joystick read)
@@ -113,51 +113,51 @@ public:
 				//reset camera position
 				if (state.mButtons == 128) {
 					mycommand = "echo cc > /home/onram/camera.txt";
-					shell_session(pub_ssh_session, mycommand,false);
+					shell_session(pub_ssh_session, mycommand);
 				}
 
 				//Right/Left trigger used
 				//move forward (mf) right triger used
 				if (state.mRightTrigger != 0) {
 					mycommand = "echo mf > /home/onram/movement.txt";
-					shell_session(pub_ssh_session, mycommand,false);
-					if (moving == false)
+					shell_session(pub_ssh_session, mycommand);
+					if (!moving)
 						moving = true;
 				}
 				//move backwards (mb) left triger used
 				else if (state.mLeftTrigger != 0) {
 					mycommand = "echo mb > /home/onram/movement.txt";
-					shell_session(pub_ssh_session, mycommand,false);
-					if (moving == false)
+					shell_session(pub_ssh_session, mycommand);
+					if (!moving)
 						moving = true;
 				}
 				//move stop (ms) Neither left triger nor right triger are pushed and the car is moving -> need to stop
-				else if (moving == true) {
+				else if (moving) {
 					moving = false;
 					mycommand = "echo ms > /home/onram/movement.txt";
-					shell_session(pub_ssh_session, mycommand,false);
+					shell_session(pub_ssh_session, mycommand);
 				}
 
 				//Lx stick triggered
 				//move right (mr)
 				if (state.mThumbLX > 0.3) {
 					mycommand = "echo mr > /home/onram/movement.txt";
-					shell_session(pub_ssh_session, mycommand,false);
-					if (steering == false)
+					shell_session(pub_ssh_session, mycommand);
+					if (!steering)
 						steering = true;
 				}
 				//move left (ml)
 				else if (state.mThumbLX < -0.3) {
 					mycommand = "echo ml > /home/onram/movement.txt";
-					shell_session(pub_ssh_session, mycommand,false);
-					if (steering == false)
+					shell_session(pub_ssh_session, mycommand);
+					if (!steering)
 						steering = true;
 				}
 				//steering stop (ss) stick is not triggered and the car is steering -> need to stop
-				else if (steering == true) {
+				else if (steering) {
 					steering = false;
 					mycommand = "echo ss > /home/onram/movement.txt";
-					shell_session(pub_ssh_session, mycommand,false);
+					shell_session(pub_ssh_session, mycommand);
 				}
 
 
@@ -166,19 +166,19 @@ public:
 				//enable/disable streaming
 				if (state.mButtons == 32768) {
 					//check if streamThread has created
-					if (first_time_pushed_camera_button == true) {
+					if (first_time_pushed_camera_button) {
 						//streamThread already exists
 						//update flags for pause/resume with SRW locks usage
 						AcquireSRWLockExclusive(&camlock);
-						if (stream_tread_runs == true) {
-							if (pad_debug == true) {
+						if (stream_tread_runs) {
+							if (pad_debug) {
 								printf("Pausing from Thread %s...\n", System::AppDomain::GetCurrentThreadId().ToString());
 							}
 							stop_strem = true;
 							stream_tread_runs = false;
 						}
 						else {
-							if (pad_debug == true) {
+							if (pad_debug) {
 								printf("Resuming from Thread %s...\n", System::AppDomain::GetCurrentThreadId().ToString());
 							}
 							stop_strem = false;
@@ -208,47 +208,51 @@ public:
 						//run streamThread
 						streamThread->Start();
 					}
+					Sleep(1000);//slowdown gamepad read for multiple same-button calls fix
 				}
 
 				//B button is pressed
 				if (state.mButtons == 8192) {  //B button is pressed
-					if (pad_debug == true) {
+					if (pad_debug) {
 						printf("\nB button pressed \n");
 					}
-					if (blue_lights == false) {			//  on/off blue lights
+					if (!blue_lights) {			//  on/off blue lights
 						blue_lights = true;
 						mycommand = "gpio write 0 1";	//blue lights on
-						shell_session(pub_ssh_session, mycommand,false);
+						shell_session(pub_ssh_session, mycommand);
 					}
 					else {
 						blue_lights = false;
 						mycommand = "gpio write 0 0";	//blue lights off
-						shell_session(pub_ssh_session, mycommand,false);
+						shell_session(pub_ssh_session, mycommand);
 					}
+					Sleep(1000);//slowdown gamepad read for multiple same-button calls fix
 				}
 
 				//A button is pressed
 				if (state.mButtons == 4096) {  //A button is pressed
 											   //OutputDebugString("\n A button pressed\n");
-					if (white_lights == false) {			//  on/off white lights
+					if (!white_lights) {			//  on/off white lights
 						white_lights = true;
 						mycommand = "gpio write 1 1";	//white lights on
-						shell_session(pub_ssh_session, mycommand,false);
+						shell_session(pub_ssh_session, mycommand);
 					}
 					else {
 						white_lights = false;
 						mycommand = "gpio write 1 0";	//white lights on
-						shell_session(pub_ssh_session, mycommand,false);
+						shell_session(pub_ssh_session, mycommand);
 					}
+					Sleep(1000);//slowdown gamepad read for multiple same-button calls fix
 				}
 
 				//X button is pressed --maybe in future usage
 				if (state.mButtons == 16384) {  //X button is pressed
-					if (pad_debug == true) {
+					if (pad_debug) {
 						printf("Xinput X pressed!\n");
 					}
-			//		mycommand = "mpg123 /home/john/Music/car-sound/Car_Horn_Honk1.mp3";
-			//		shell_session(pub_ssh_session, mycommand,false);
+			//		mycommand = "mpg123 /home/car-sound/Car_Horn_Honk1.mp3";
+			//		shell_session(pub_ssh_session, mycommand);
+					Sleep(1000);//slowdown gamepad read for multiple same-button calls fix
 				}
 				
 				//----------------Checking Buttons and Triggers ENDS---------------------//
@@ -256,7 +260,7 @@ public:
 			//get to idle loop maybe dxinput thread is running
 			Sleep(1000);
 		
-			if (terminateme == true) {	//terminate the tread the app is closing
+			if (terminateme) {	//terminate the tread the app is closing
 				break;
 			}
 		}
@@ -264,24 +268,24 @@ public:
 
 
 	void DxinputRead() {
-		if (pad_debug == true) {
+		if (pad_debug) {
 			printf("DX input started\n");
 		}
 		// Create a DirectInput device
 		if (FAILED(hr = DirectInput8Create(GetModuleHandle(NULL), DIRECTINPUT_VERSION, IID_IDirectInput8, (VOID**)&di, NULL))) {
-			if (pad_debug == true) {
+			if (pad_debug) {
 				printf("\nFailed direct\n");
 			}
 		}
 
 		if (FAILED(hr = di->EnumDevices(DI8DEVCLASS_GAMECTRL, enumCallback, NULL, DIEDFL_ATTACHEDONLY))) {
-			if (pad_debug == true) {
+			if (pad_debug) {
 				printf("\nFailed Enum \n");
 			}
 		}
 		// Make sure we got a joystick
 		if (joystick == NULL) {
-			if (pad_debug == true) {
+			if (pad_debug) {
 				printf("Joystick not found.\n");
 			}
 		}
@@ -292,12 +296,12 @@ public:
 			// and how they should be reported. This tells DInput that we will be
 			// passing a DIJOYSTATE2 structure to IDirectInputDevice::GetDeviceState().
 			if (FAILED(hr = joystick->SetDataFormat(&c_dfDIJoystick2))) {
-				if (pad_debug == true) {
+				if (pad_debug) {
 					printf("Failed SetData \n");
 				}
 			}
 			else {
-				if (pad_debug == true) {
+				if (pad_debug) {
 					printf("Set Data ok!\n");
 				}
 			}
@@ -305,7 +309,7 @@ public:
 			// Set the cooperative level to let DInput know how this device should
 			// interact with the system and with other DInput applications.
 			if (FAILED(hr = joystick->SetCooperativeLevel(NULL, DISCL_EXCLUSIVE | DISCL_FOREGROUND))) {
-				if (pad_debug == true) {
+				if (pad_debug) {
 					printf("Failed SetCooperative Level \n");
 				}
 			}
@@ -314,7 +318,7 @@ public:
 			// properties for unavailable axis)
 			capabilities.dwSize = sizeof(DIDEVCAPS);
 			if (FAILED(hr = joystick->GetCapabilities(&capabilities))) {
-				if (pad_debug == true) {
+				if (pad_debug) {
 					printf("Failed Get Capabilities \n");
 				}
 			}
@@ -336,16 +340,16 @@ public:
 
 					// If we encounter a fatal error, return failure.
 					if ((hr == DIERR_INVALIDPARAM) || (hr == DIERR_NOTINITIALIZED)) {
-						if (pad_debug == true) {
+						if (pad_debug) {
 							printf("Failed encounter \n");
 						}
 						if (hr == DIERR_INVALIDPARAM) {
-							if (pad_debug == true) {
+							if (pad_debug) {
 								printf("invalid param\n");
 							}
 						}
 						if (hr == DIERR_NOTINITIALIZED) {
-							if (pad_debug == true) {
+							if (pad_debug) {
 								printf("Not initialized\n");
 							}
 						}
@@ -361,7 +365,7 @@ public:
 				// Get the input's device state
 
 				if (FAILED(hr = joystick->GetDeviceState(sizeof(DIJOYSTATE2), &js))) {
-					if (pad_debug == true) {
+					if (pad_debug) {
 						printf("Failed  should have been acquired \n"); // The device should have been acquired during the Poll()
 					}
 				}
@@ -407,11 +411,11 @@ public:
 									do {
 										if (js.lRz < 32511) {	//move camera up
 											mycommand = "echo cu > /home/onram/camera.txt";
-											shell_session(pub_ssh_session, mycommand,false);
+											shell_session(pub_ssh_session, mycommand);
 										}
 										else {	//move camera down
 											mycommand = "echo cd > /home/onram/camera.txt";
-											shell_session(pub_ssh_session, mycommand,false);
+											shell_session(pub_ssh_session, mycommand);
 										}
 										joystick->GetDeviceState(sizeof(DIJOYSTATE2), &js);	//update gamepad state
 									} while (old_ry == js.lRz);	//do the same action until user decides to stop (speed up joystick read)
@@ -425,12 +429,12 @@ public:
 									do {
 										if (js.lZ < 32511) {	//move camera left
 											mycommand = "echo cl > /home/onram/camera.txt";
-											shell_session(pub_ssh_session, mycommand,false);
+											shell_session(pub_ssh_session, mycommand);
 										}
 
 										else {	//move camera right
 											mycommand = "echo cr > /home/onram/camera.txt";
-											shell_session(pub_ssh_session, mycommand,false);
+											shell_session(pub_ssh_session, mycommand);
 										}
 										joystick->GetDeviceState(sizeof(DIJOYSTATE2), &js);	//update gamepad state
 									} while (old_rx == js.lZ);	//do the same action until user decides to stop (speed up joystick read)
@@ -441,52 +445,52 @@ public:
 								//reset camera position
 								if (js.rgbButtons[11] != NULL) {	//no change required for arch_lab's gamepad support
 									mycommand = "echo cc > /home/onram/camera.txt";
-									shell_session(pub_ssh_session, mycommand,false);
+									shell_session(pub_ssh_session, mycommand);
 								}
 
 								//Right/Left trigger used
 								//move forward (mf) right triger used
 								if (js.rgbButtons[7] != NULL) { //no change required for arch_lab's gamepad support
 									mycommand = "echo mf > /home/onram/movement.txt";
-									shell_session(pub_ssh_session, mycommand,false);
-									if (moving == false)
+									shell_session(pub_ssh_session, mycommand);
+									if (!moving)
 										moving = true;
 								}
 								//move backwards (mb) left triger used
 								//else if (js.rgbButtons[5] != NULL) { //uncoment for arch_lab gamepad
 								else if (js.rgbButtons[6] != NULL) {
 									mycommand = "echo mb > /home/onram/movement.txt";
-									shell_session(pub_ssh_session, mycommand,false);
-									if (moving == false)
+									shell_session(pub_ssh_session, mycommand);
+									if (!moving)
 										moving = true;
 								}
 								//move stop (ms)Neither left triger nor right triger are pushed and the car is moving -> need to stop
-								else if (moving == true) {
+								else if (moving) {
 									moving = false;
 									mycommand = "echo ms > /home/onram/movement.txt";
-									shell_session(pub_ssh_session, mycommand,false);
+									shell_session(pub_ssh_session, mycommand);
 								}
 
 								//Lx stick triggered
 								//move right (mr)
 								if (js.lX > 42511) {	//no change required for arch_lab's gamepad support
 									mycommand = "echo mr > /home/onram/movement.txt";
-									shell_session(pub_ssh_session, mycommand,false);
-									if (steering == false)
+									shell_session(pub_ssh_session, mycommand);
+									if (!steering)
 										steering = true;
 								}
 								//move left (ml)
 								else if (js.lX < 22511) {	//no change required for arch_lab's gamepad support
 									mycommand = "echo ml > /home/onram/movement.txt";
-									shell_session(pub_ssh_session, mycommand,false);
-									if (steering == false)
+									shell_session(pub_ssh_session, mycommand);
+									if (!steering)
 										steering = true;
 								}
 								//steering stop (ss) stick is not triggered and the car is steering -> need to stop
-								else if (steering == true) {
+								else if (steering) {
 									steering = false;
 									mycommand = "echo ss > /home/onram/movement.txt";
-									shell_session(pub_ssh_session, mycommand,false);
+									shell_session(pub_ssh_session, mycommand);
 								}
 
 								//Y button is pressed
@@ -494,19 +498,19 @@ public:
 								//if (js.rgbButtons[1] != NULL) {	//uncoment for arch_lab gamepad
 								if (js.rgbButtons[3] != NULL) {
 									//check if streamThread has created
-									if (first_time_pushed_camera_button == true) {
+									if (first_time_pushed_camera_button) {
 										//streamThread already exists
 										//update flags for pause/resume with SRW locks usage
 										AcquireSRWLockExclusive(&camlock);
-										if (stream_tread_runs == true) {
-											if (pad_debug == true) {
+										if (stream_tread_runs) {
+											if (pad_debug) {
 												printf("Pausing from DX Thread %s...\n", System::AppDomain::GetCurrentThreadId().ToString());
 											}
 											stop_strem = true;
 											stream_tread_runs = false;
 										}
 										else {
-											if (pad_debug == true) {
+											if (pad_debug) {
 												printf("Resuming from DX Thread %s...\n", System::AppDomain::GetCurrentThreadId().ToString());
 											}
 											stop_strem = false;
@@ -535,62 +539,65 @@ public:
 										//run streamThread
 										streamThread->Start();
 									}
-
+									Sleep(1000);//slowdown gamepad read for multiple same-button calls fix
 								}
 
 								//B button is pressed
 								//if (js.rgbButtons[3] != NULL) {  //uncoment for arch_lab gamepad
 								if (js.rgbButtons[2] != NULL) {
-									if (blue_lights == false) {			//  on/off blue lights
+									if (!blue_lights) {			//  on/off blue lights
 										blue_lights = true;
 										mycommand = "gpio write 0 1";	//blue lights on
-										shell_session(pub_ssh_session, mycommand,false);
+										shell_session(pub_ssh_session, mycommand);
 									}
 									else {
 										blue_lights = false;
 										mycommand = "gpio write 0 0";	//blue lights off
-										shell_session(pub_ssh_session, mycommand,false);
+										shell_session(pub_ssh_session, mycommand);
 									}
-									if (pad_debug == true) {
+									if (pad_debug) {
 										printf("DX B button pressed\n");
 									}
+									Sleep(1000);//slowdown gamepad read for multiple same-button calls fix
 								}
 
 								//A button is pressed
 								//if (js.rgbButtons[2] != NULL) {  //uncoment for arch_lab gamepad
 								if (js.rgbButtons[1] != NULL) {
-									if (white_lights == false) {			//  on/off white lights
+									if (!white_lights) {			//  on/off white lights
 										white_lights = true;
 										mycommand = "gpio  write 1 1";	//white lights on
-										shell_session(pub_ssh_session, mycommand,false);
+										shell_session(pub_ssh_session, mycommand);
 									}
 									else {
 										white_lights = false;
-										mycommand = "gpio  write 1 0";	//white lights off
-										shell_session(pub_ssh_session, mycommand,false);
+										mycommand = "gpio write 1 0";	//white lights off
+										shell_session(pub_ssh_session, mycommand);
 									}
-									if (pad_debug == true) {
+									if (pad_debug) {
 										printf("A button pressed \n");
 									}
+									Sleep(1000);//slowdown gamepad read for multiple same-button calls fix
 								}
 
 								//X button is pressed --maybe in future usage
 								if (js.rgbButtons[0] != NULL) {  //no change required for arch_lab's gamepad support
-									//mycommand = "mpg123 /home/johnny/car-sound/Car_Horn_Honk1.mp3";
-									//shell_session(pub_ssh_session, mycommand,false);
-									if (pad_debug == true) {
+									//mycommand = "mpg123 /home/Car_Horn_Honk1.mp3";
+									//shell_session(pub_ssh_session, mycommand);
+									if (pad_debug) {
 										printf("DX x pressed! \n");
 									}
+									Sleep(1000);//slowdown gamepad read for multiple same-button calls fix
 								}
 
 								//------------------------------------END Direct INPUT CHECK----------------------------
-								Sleep(100);
+								//Sleep(100);
 							
 						
 			}
 			//get to idle loop maybe Xiput thread is running
 			Sleep(1000);
-			if (terminateme == true) {	//terminate the tread the app is closing
+			if (terminateme) {	//terminate the tread the app is closing
 				break;
 			}
 		}

@@ -21,9 +21,9 @@
 std::string ip_address_stream;
 ssh_session pub_ssh_session,sonar_pub_ssh_session;
 
-bool connection_established = false, dxthread_started,xinputhread_started,DX_enable=false;
-bool main_debug = true; //comment for no debug execution
-//bool main_debug = false; //comment for normal execution
+bool connection_established = false, dxthread_started,xinputhread_started,DX_enable=false, kill_sonar=false;
+//bool main_debug = true; //comment for no debug execution
+bool main_debug = false; //comment for normal execution
 
 
 int rc_pub=1,bckgrd_counter=0;
@@ -357,21 +357,21 @@ namespace guiWopencv {
 	private: System::Void button1_Click(System::Object^  sender, System::EventArgs^  e) {
 		//check if an SSH connection is establised 
 		//we want this button actually do something after a successfull SSH connection
-		if (connection_established == true) {
+		if (connection_established) {
 			//check if the streamThread  already runs
-			if (first_time_pushed_camera_button == true) {
+			if (first_time_pushed_camera_button) {
 				//the streamThread already exists so we need only to update the flags
 				//use SRW locks to face competitive problems between the threads
 				AcquireSRWLockExclusive(&camlock);
-				if (stream_tread_runs == true) {
-					if (main_debug == true) {
+				if (stream_tread_runs) {
+					if (main_debug) {
 						printf("Pausing...\n");
 					}
 					stop_strem = true;
 					stream_tread_runs = false;
 				}
 				else {
-					if (main_debug == true) {
+					if (main_debug) {
 						printf("Resuming...\n");
 					}
 					stop_strem = false;
@@ -402,7 +402,7 @@ namespace guiWopencv {
 			}
 		}
 		else {
-			if (main_debug == true) {
+			if (main_debug) {
 				printf("SSH connection required\n");
 			}
 		}
@@ -420,14 +420,14 @@ namespace guiWopencv {
 		//get the IP user has given
 		String ^ ip_address2 = textBox1->Text;
 		ssh_session my_ssh_session,sonar_ssh_session;
-		std::string  httpadder = "http://", streamport = ":8081", ip_address;
+		std::string  httpadder = "http://", streamport = ":8080", ip_address;
 		System::Threading::Thread^ padthread;
 		//check if connection already exists
-		if(connection_established==false){
+		if(!connection_established){
 			//convert the taken ip from system string to std string
 			ip_address = msclr::interop::marshal_as<std::string>(ip_address2);
 			//check if the given IP is actualy IP 
-			if (check_input(ip_address) == false) {
+			if (!check_input(ip_address)) {
 				label3->Text = "This is not a valid IP ->" +ip_address2;
 				label3->ForeColor = System::Drawing::Color::Red;
 			}
@@ -436,7 +436,7 @@ namespace guiWopencv {
 				my_ssh_session = create_ssh_connection(ip_address);
 				//create ssh session for sonar read
 				sonar_ssh_session = create_ssh_connection(ip_address);
-				//convert ip from xxx.xxx.xxx.xxx to http://xxx.xxx.xxx.xxx:8081
+				//convert ip from xxx.xxx.xxx.xxx to http://xxx.xxx.xxx.xxx:8080
 				ip_address.insert(0, httpadder);
 				ip_address.insert(ip_address.size(), streamport);
 
@@ -446,18 +446,18 @@ namespace guiWopencv {
 				ip_address2 = msclr::interop::marshal_as<String ^>(ip_address_stream);
 				//check if connection is established
 				if (my_ssh_session == 0) {	//connection is NOT established
-					if (main_debug == true) {
+					if (main_debug) {
 						printf("Cannot connect to server\n");
 					}
 				}
 				else {
 					connection_established = true;
-					if (main_debug == true) {
+					if (main_debug) {
 						printf("Connection established\n");
 					}
 					//check second session for errors
 					if (sonar_ssh_session != 0) {
-						if (main_debug == true) {
+						if (main_debug) {
 							printf("Second Connection established\n");
 						}
 					}
@@ -480,7 +480,7 @@ namespace guiWopencv {
 					pub_ssh_session = my_ssh_session;
 
 					//check type of input
-					if (DX_enable == false) {	//Xinput selected
+					if (!DX_enable) {	//Xinput selected
 						//create a padthread with passer's data calling XinputRead function
 						padthread = gcnew System::Threading::Thread(gcnew System::Threading::ThreadStart(passer, &GamepadRead::XinputRead));
 						//set flags
@@ -502,7 +502,7 @@ namespace guiWopencv {
 			}
 		}
 		else {
-			if (main_debug == true) {
+			if (main_debug) {
 				printf("Connection already established!\n");
 			}
 			//print the gotten IP to the label3				
@@ -517,9 +517,11 @@ private: System::Void button3_Click(System::Object^  sender, System::EventArgs^ 
 	//set flags in way to terminate all threads and then close the app
 	stop_strem = true;
 	terminate_stream_proc = true;
+	kill_sonar = true;
 	running_xinput = false;
 	running_Dxinput = false;
 	Application::Exit();
+	exit(0);
 }
 
 //DX button
@@ -527,18 +529,18 @@ private: System::Void DX_Click(System::Object^  sender, System::EventArgs^  e) {
 	System::Threading::Thread^ padthread;
 	GamepadRead^ passer = gcnew GamepadRead;
 	//check if a SSH connection is established
-	if (connection_established == true) {
+	if (connection_established) {
 		//connection is established
 		//passer gets the ssh_session for padthread
 		passer->pub_ssh_session = pub_ssh_session;
 		//enable Direct Input
-		if (DX_enable == false) {
+		if (!DX_enable) {
 			DX_enable = true;
 			//update gui
 			DX_label->Text = "DX enabled";
 			DX_label->ForeColor = System::Drawing::Color::Green;
 			//check if padthread with direct input has created before
-			if (dxthread_started == false) {
+			if (!dxthread_started) {
 				//padthread with direct input has NOT created before so we create one now
 				padthread = gcnew System::Threading::Thread(gcnew System::Threading::ThreadStart(passer, &GamepadRead::DxinputRead));
 				//update flags using SRW locks
@@ -568,7 +570,7 @@ private: System::Void DX_Click(System::Object^  sender, System::EventArgs^  e) {
 			DX_label->Text = "DX disabled";
 			DX_label->ForeColor = System::Drawing::Color::Gray;
 			//check if padthread with Xinput has created before
-			if (xinputhread_started == false) {
+			if (!xinputhread_started) {
 				//padthread with Xinput has NOT created before so we create one now
 				padthread = gcnew System::Threading::Thread(gcnew System::Threading::ThreadStart(passer, &GamepadRead::XinputRead));
 				//update flags using SRW locks
@@ -595,7 +597,7 @@ private: System::Void DX_Click(System::Object^  sender, System::EventArgs^  e) {
 	}
 	//connection is NOT established just change the flags
 	else {
-		if (DX_enable == false) {
+		if (!DX_enable) {
 			DX_enable = true;
 			//update gui
 			DX_label->Text = "DX enabled";
@@ -613,21 +615,23 @@ private: System::Void DX_Click(System::Object^  sender, System::EventArgs^  e) {
 
 private: System::Void backgroundWorker1_DoWork(System::Object^  sender, System::ComponentModel::DoWorkEventArgs^  e) {
 	int i, fnl_sonar[5],counter;
-	System::String^ tse = "TSE";
 	std::vector<int> sonar;
 
-	for (;;) {
+	while(!kill_sonar){
 		//get sonar value
 		sonar = sonaread(sonar_pub_ssh_session);
 
 		
-
-		printf("Printing vector FROM main!\n");
+		if (main_debug) {
+			printf("Printing vector FROM main!\n");
+		}
 		counter = 0;
 		for (auto i = sonar.begin(); i != sonar.end(); ++i) {			
 			std::cout << *i << "\n";
 			fnl_sonar[counter] = *i;
-			printf("Sonar[%d] = %d \n", counter, fnl_sonar[counter]);
+			if (main_debug) {
+				printf("Sonar[%d] = %d \n", counter, fnl_sonar[counter]);
+			}
 			counter++;
 		}
 		Sleep(1000);
@@ -640,19 +644,19 @@ private: System::Void backgroundWorker1_DoWork(System::Object^  sender, System::
 }
 
 		 
-	private: System::Void backgroundWorker1_ProgressChanged(System::Object^ sender, System::ComponentModel::ProgressChangedEventArgs^ e)
+private: System::Void backgroundWorker1_ProgressChanged(System::Object^ sender, System::ComponentModel::ProgressChangedEventArgs^ e)
 	{		
 			switch (bckgrd_counter) {
 			case 0 :
-				label5->Text = e->ProgressPercentage.ToString();	//update the label5
+				label10->Text = e->ProgressPercentage.ToString();	//update the label5
 				bckgrd_counter++;
 				break;
 			case 1:
-				label10->Text = e->ProgressPercentage.ToString();	//update the label10
+				label5->Text = e->ProgressPercentage.ToString();	//update the label10
 				bckgrd_counter++;
 				break;
 			case 2:
-				label6->Text = e->ProgressPercentage.ToString();	//update the label6
+				label12->Text = e->ProgressPercentage.ToString();	//update the label6
 				bckgrd_counter++;
 				break;
 			case 3:
@@ -660,7 +664,7 @@ private: System::Void backgroundWorker1_DoWork(System::Object^  sender, System::
 				bckgrd_counter++;
 				break;
 			case 4:
-				label12->Text = e->ProgressPercentage.ToString();	//update the label12
+				label6->Text = e->ProgressPercentage.ToString();	//update the label12
 				bckgrd_counter = 0;
 				break;
 			}
