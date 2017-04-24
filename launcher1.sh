@@ -16,4 +16,4 @@ chmod 777 /dev/ttyUSB0
 /usr/local/bin/gpio export 17 out
 /usr/local/bin/gpio export 18 out
 
-python /home/pi/scripts/arduino_com.py
+python /home/pi/scripts/arduino_com_full.py
